@@ -57,7 +57,7 @@ function PortfoliosPage() {
   }, [search.role, search.level, search.hire]);
 
   const setParam = (key: string, value: string | undefined) => {
-    navigate({ search: (prev) => ({ ...prev, [key]: value || undefined }) });
+    navigate({ search: (prev: Record<string, string | undefined>) => ({ ...prev, [key]: value || undefined }) });
   };
 
   return (
