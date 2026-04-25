@@ -1,0 +1,7 @@
+project_id = "jlqcplifpufkpqnrercd"
+
+[functions.generate-project]
+verify_jwt = false
+
+[functions.grade-submission]
+verify_jwt = false
