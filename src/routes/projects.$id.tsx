@@ -157,6 +157,8 @@ function ProjectPage() {
       if (!submitted) return;
       const { data, error } = await supabase.functions.invoke("grade-submission", {
         body: {
+          role: roleName,
+          level: project.difficulty_level,
           project: {
             title: project.title,
             problem_statement: project.problem_statement,
