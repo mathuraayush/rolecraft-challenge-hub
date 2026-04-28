@@ -209,6 +209,71 @@ function ProjectPage() {
             <h2 className="font-display text-2xl font-semibold">AI Feedback</h2>
             <span className="rounded-full bg-success/15 px-3 py-1 text-sm font-medium text-success">{sub.ai_score}/100</span>
           </div>
+
+          {sub.ai_meta?.authenticity && (() => {
+            const a = sub.ai_meta.authenticity;
+            if (a.authenticity_score < 50) {
+              return (
+                <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                  <div className="font-semibold">AI-generated answers detected — submission flagged for manual review</div>
+                  <div className="mt-1 text-destructive/80">{a.reasoning}</div>
+                </div>
+              );
+            }
+            if (a.authenticity_score < 80) {
+              return (
+                <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent/20 px-3 py-1 text-sm font-medium text-accent-foreground">
+                  ⚠ Authenticity unclear — mentor will verify
+                </div>
+              );
+            }
+            return (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-success/15 px-3 py-1 text-sm font-medium text-success">
+                Authentic ✓
+              </div>
+            );
+          })()}
+
+          {sub.ai_meta?.code_review && (
+            <div className="mt-4 rounded-2xl border border-border bg-background p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                {sub.ai_meta.code_review.repo_mismatch ? (
+                  <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive">Repository mismatch detected</span>
+                ) : sub.ai_meta.code_review.repo_relevant ? (
+                  <span className="rounded-full bg-success/15 px-3 py-1 text-xs font-medium text-success">Repository verified ✓</span>
+                ) : sub.ai_meta.code_review.repo_accessible ? (
+                  <span className="rounded-full bg-accent/20 px-3 py-1 text-xs font-medium text-accent-foreground">Repository accessed — relevance unclear</span>
+                ) : (
+                  <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive">Repository not accessible</span>
+                )}
+                {sub.ai_meta.code_review.answers_match_code === false && (
+                  <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive">Answers inconsistent with code</span>
+                )}
+              </div>
+              {sub.ai_meta.code_review.files_reviewed?.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {sub.ai_meta.code_review.files_reviewed.map((f) => (
+                    <span key={f} className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-mono text-muted-foreground">{f}</span>
+                  ))}
+                </div>
+              )}
+              {sub.ai_meta.code_review.code_quality_observation && (
+                <p className="mt-3 text-sm leading-relaxed text-foreground">{sub.ai_meta.code_review.code_quality_observation}</p>
+              )}
+              {sub.ai_meta.code_review.inconsistencies_found?.length > 0 && (
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-destructive">
+                  {sub.ai_meta.code_review.inconsistencies_found.map((i, idx) => <li key={idx}>{i}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {sub.ai_meta?.mentor_review_required && (
+            <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 p-3 text-sm text-accent-foreground">
+              Authenticity flag: answers show patterns consistent with AI generation. Mentor review recommended.
+            </div>
+          )}
+
           <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">{sub.ai_feedback}</pre>
         </article>
       )}
