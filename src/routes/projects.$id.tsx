@@ -201,7 +201,11 @@ function ProjectPage() {
         <div className="flex flex-wrap items-center gap-2 text-xs">
           {project.domain && <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">{project.domain}</span>}
           {project.focus_area && <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">{project.focus_area}</span>}
-          {project.difficulty_level && <span className="rounded-full bg-accent/20 px-2.5 py-1 font-medium text-accent-foreground capitalize">{project.difficulty_level}</span>}
+          {project.difficulty_level && (() => {
+            const l = project.difficulty_level.toLowerCase();
+            const cls = l === "beginner" ? "bg-success/15 text-success" : l === "advanced" ? "bg-destructive/15 text-destructive" : "bg-accent/20 text-accent-foreground";
+            return <span className={`rounded-full px-2.5 py-1 font-medium capitalize ${cls}`}>{project.difficulty_level}</span>;
+          })()}
         </div>
         <h1 className="mt-4 font-display text-3xl font-semibold sm:text-4xl">{project.title}</h1>
 
