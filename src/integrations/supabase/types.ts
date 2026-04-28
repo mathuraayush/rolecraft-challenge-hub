@@ -157,6 +157,7 @@ export type Database = {
       submissions: {
         Row: {
           ai_feedback: string | null
+          ai_meta: Json | null
           ai_score: number | null
           approach_text: string | null
           created_at: string
@@ -175,6 +176,7 @@ export type Database = {
         }
         Insert: {
           ai_feedback?: string | null
+          ai_meta?: Json | null
           ai_score?: number | null
           approach_text?: string | null
           created_at?: string
@@ -193,6 +195,7 @@ export type Database = {
         }
         Update: {
           ai_feedback?: string | null
+          ai_meta?: Json | null
           ai_score?: number | null
           approach_text?: string | null
           created_at?: string
