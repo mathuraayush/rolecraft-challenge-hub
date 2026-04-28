@@ -30,6 +30,13 @@ interface UserRow {
   onboarded: boolean;
 }
 
+function difficultyBadgeClass(level: string | null): string {
+  const l = (level || "").toLowerCase();
+  if (l === "beginner") return "bg-success/15 text-success";
+  if (l === "advanced") return "bg-destructive/15 text-destructive";
+  return "bg-accent/20 text-accent-foreground"; // intermediate + fallback = amber
+}
+
 export const Route = createFileRoute("/dashboard")({
   validateSearch: z.object({ generate: z.string().optional() }),
   component: Dashboard,
