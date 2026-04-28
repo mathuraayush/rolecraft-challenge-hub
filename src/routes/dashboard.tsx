@@ -30,6 +30,13 @@ interface UserRow {
   onboarded: boolean;
 }
 
+function difficultyBadgeClass(level: string | null): string {
+  const l = (level || "").toLowerCase();
+  if (l === "beginner") return "bg-success/15 text-success";
+  if (l === "advanced") return "bg-destructive/15 text-destructive";
+  return "bg-accent/20 text-accent-foreground"; // intermediate + fallback = amber
+}
+
 export const Route = createFileRoute("/dashboard")({
   validateSearch: z.object({ generate: z.string().optional() }),
   component: Dashboard,
@@ -160,7 +167,7 @@ function Dashboard() {
               >
                 <div className="flex items-center gap-2 text-xs">
                   {p.domain && <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">{p.domain}</span>}
-                  {p.difficulty_level && <span className="rounded-full bg-accent/20 px-2.5 py-1 font-medium text-accent-foreground capitalize">{p.difficulty_level}</span>}
+                  {p.difficulty_level && <span className={`rounded-full px-2.5 py-1 font-medium capitalize ${difficultyBadgeClass(p.difficulty_level)}`}>{p.difficulty_level}</span>}
                   {sub?.status === "graded" && (
                     <span className="ml-auto rounded-full bg-success/15 px-2.5 py-1 font-medium text-success">
                       Graded · {sub.ai_score}/100
