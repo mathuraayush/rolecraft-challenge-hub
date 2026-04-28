@@ -162,7 +162,11 @@ function PublicPortfolio() {
               <div key={s.id} className="rounded-2xl border border-border bg-card p-6">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   {s.projects?.domain && <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">{s.projects.domain}</span>}
-                  {s.projects?.difficulty_level && <span className="rounded-full bg-accent/20 px-2.5 py-1 font-medium capitalize text-accent-foreground">{s.projects.difficulty_level}</span>}
+                  {s.projects?.difficulty_level && (() => {
+                    const l = s.projects.difficulty_level.toLowerCase();
+                    const cls = l === "beginner" ? "bg-success/15 text-success" : l === "advanced" ? "bg-destructive/15 text-destructive" : "bg-accent/20 text-accent-foreground";
+                    return <span className={`rounded-full px-2.5 py-1 font-medium capitalize ${cls}`}>{s.projects.difficulty_level}</span>;
+                  })()}
                   {s.status === "graded" && s.ai_score !== null && (
                     <span className="ml-auto rounded-full bg-success/15 px-2.5 py-1 font-medium text-success">AI score · {s.ai_score}/100</span>
                   )}
