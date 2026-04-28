@@ -63,6 +63,7 @@ function ProjectPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
+  const [roleName, setRoleName] = useState<string>("");
   const [sub, setSub] = useState<Submission | null>(null);
   const [saving, setSaving] = useState(false);
   const [grading, setGrading] = useState(false);
