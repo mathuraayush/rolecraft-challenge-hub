@@ -210,7 +210,7 @@ Return your output via the create_project tool. Every field must be strictly rol
                   maxItems: hCount.max,
                   description: `${hCount.min === hCount.max ? hCount.min : `${hCount.min}-${hCount.max}`} hints calibrated to ${level} level (see HINT STYLE BY LEVEL in system prompt)`,
                 },
-                estimated_hours: { type: "string", description: "e.g. '3-5 hours'" },
+                estimated_hours: { type: "string", description: `Must be exactly "${targetHours}" for a ${level} student.` },
                 recommended_format: { type: "string", description: `Submission format suited to ${role}` },
                 domain: { type: "string", description: "Industry domain e.g. fintech, edtech, consumer, b2b-saas" },
                 focus_area: { type: "string", description: "Specific skill area being tested for this role" },
