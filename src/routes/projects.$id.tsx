@@ -8,6 +8,7 @@ import { toast } from "sonner";
 interface Project {
   id: string;
   user_id: string;
+  role_id: string | null;
   title: string;
   problem_statement: string;
   context: string | null;
