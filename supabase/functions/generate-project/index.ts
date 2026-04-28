@@ -261,7 +261,8 @@ Return your output via the create_project tool. Every field must be strictly rol
       ? `\n\n**Hints**\n${raw.hints.map((h: string) => `- ${h}`).join("\n")}`
       : "";
 
-    const contextText = `${raw.company_context || ""}${hintsText}\n\n_Estimated time: ${raw.estimated_hours || ""}. Recommended format: ${raw.recommended_format || ""}._`;
+    const finalHours = targetHours; // enforce server-side regardless of model output
+    const contextText = `${raw.company_context || ""}${hintsText}\n\n_Estimated time: ${finalHours}. Recommended format: ${raw.recommended_format || ""}._`;
 
     const project = {
       title: raw.title,
