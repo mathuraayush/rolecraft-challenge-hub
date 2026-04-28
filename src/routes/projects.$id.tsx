@@ -8,6 +8,7 @@ import { toast } from "sonner";
 interface Project {
   id: string;
   user_id: string;
+  role_id: string | null;
   title: string;
   problem_statement: string;
   context: string | null;
@@ -62,6 +63,7 @@ function ProjectPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
+  const [roleName, setRoleName] = useState<string>("");
   const [sub, setSub] = useState<Submission | null>(null);
   const [saving, setSaving] = useState(false);
   const [grading, setGrading] = useState(false);
@@ -86,6 +88,10 @@ function ProjectPage() {
       const { data: p } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
       if (!p) { toast.error("Project not found"); navigate({ to: "/dashboard" }); return; }
       setProject(p as Project);
+      if (p.role_id) {
+        const { data: r } = await supabase.from("roles").select("name").eq("id", p.role_id).maybeSingle();
+        if (r?.name) setRoleName(r.name);
+      }
       const { data: s } = await supabase.from("submissions").select("*").eq("project_id", id).eq("user_id", user.id).maybeSingle();
       if (s) {
         setSub(s as Submission);
@@ -151,6 +157,8 @@ function ProjectPage() {
       if (!submitted) return;
       const { data, error } = await supabase.functions.invoke("grade-submission", {
         body: {
+          role: roleName,
+          level: project.difficulty_level,
           project: {
             title: project.title,
             problem_statement: project.problem_statement,
