@@ -163,15 +163,21 @@ function ProjectPage() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      const { code_review, authenticity, mentor_review_required, score, feedback } = data;
       const { data: graded, error: uErr } = await supabase
         .from("submissions")
-        .update({ status: "graded", ai_score: data.score, ai_feedback: data.feedback })
+        .update({
+          status: "graded",
+          ai_score: score,
+          ai_feedback: feedback,
+          ai_meta: { code_review, authenticity, mentor_review_required },
+        })
         .eq("id", submitted.id)
         .select()
         .single();
       if (uErr) throw uErr;
       setSub(graded as Submission);
-      toast.success(`Graded: ${data.score}/100`);
+      toast.success(`Graded: ${score}/100`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Grading failed");
     } finally {
