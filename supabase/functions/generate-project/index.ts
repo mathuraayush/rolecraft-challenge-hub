@@ -182,20 +182,20 @@ Return your output via the create_project tool. Every field must be strictly rol
                 problem_statement: { type: "string", description: "3 paragraphs — p1: background and context, p2: the specific problem with data/numbers, p3: what is at stake if not solved" },
                 deliverables: {
                   type: "array",
-                  description: `Exactly 5 deliverables, each strictly appropriate for a ${role}. ${getRoleDeliverables(role)}`,
+                  description: `Between ${dCount.min} and ${dCount.max} deliverables, each strictly appropriate for a ${role} at ${level} level. ${getRoleDeliverables(role)}`,
                   items: { type: "string" },
-                  minItems: 5,
-                  maxItems: 5,
+                  minItems: dCount.min,
+                  maxItems: dCount.max,
                 },
                 evaluation_rubric: {
                   type: "array",
-                  description: "Four rubric criteria, each worth 25 points, tailored to the role",
+                  description: `Four rubric criteria, each worth 25 points, tailored to the ${role} role and calibrated to ${level} level expectations`,
                   items: {
                     type: "object",
                     properties: {
                       criteria: { type: "string" },
                       points: { type: "integer" },
-                      description: { type: "string", description: `Specific to ${role} role` },
+                      description: { type: "string", description: `Specific to ${role} at ${level} level` },
                     },
                     required: ["criteria", "points", "description"],
                     additionalProperties: false,
@@ -206,9 +206,9 @@ Return your output via the create_project tool. Every field must be strictly rol
                 hints: {
                   type: "array",
                   items: { type: "string" },
-                  minItems: 3,
-                  maxItems: 3,
-                  description: `Three role-appropriate hints for a ${role}`,
+                  minItems: hCount.min,
+                  maxItems: hCount.max,
+                  description: `${hCount.min === hCount.max ? hCount.min : `${hCount.min}-${hCount.max}`} hints calibrated to ${level} level (see HINT STYLE BY LEVEL in system prompt)`,
                 },
                 estimated_hours: { type: "string", description: "e.g. '3-5 hours'" },
                 recommended_format: { type: "string", description: `Submission format suited to ${role}` },
