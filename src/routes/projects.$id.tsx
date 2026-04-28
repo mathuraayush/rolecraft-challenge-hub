@@ -31,6 +31,26 @@ interface Submission {
   status: string;
   ai_score: number | null;
   ai_feedback: string | null;
+  ai_meta: AiMeta | null;
+}
+
+interface AiMeta {
+  code_review?: {
+    repo_accessible: boolean;
+    repo_relevant: boolean;
+    repo_mismatch: boolean;
+    files_reviewed: string[];
+    code_quality_observation: string;
+    answers_match_code: boolean;
+    inconsistencies_found: string[];
+  };
+  authenticity?: {
+    likely_ai_generated: boolean;
+    confidence: "low" | "medium" | "high";
+    reasoning: string;
+    authenticity_score: number;
+  };
+  mentor_review_required?: boolean;
 }
 
 export const Route = createFileRoute("/projects/$id")({
