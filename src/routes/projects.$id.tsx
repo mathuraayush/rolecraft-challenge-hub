@@ -88,6 +88,10 @@ function ProjectPage() {
       const { data: p } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
       if (!p) { toast.error("Project not found"); navigate({ to: "/dashboard" }); return; }
       setProject(p as Project);
+      if (p.role_id) {
+        const { data: r } = await supabase.from("roles").select("name").eq("id", p.role_id).maybeSingle();
+        if (r?.name) setRoleName(r.name);
+      }
       const { data: s } = await supabase.from("submissions").select("*").eq("project_id", id).eq("user_id", user.id).maybeSingle();
       if (s) {
         setSub(s as Submission);
