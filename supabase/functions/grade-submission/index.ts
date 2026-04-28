@@ -5,6 +5,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const ROLE_GRADING_FOCUS: Record<string, string> = {
+  "Product Manager":
+    "Grade on: clarity of user problem definition, quality of prioritization reasoning, completeness of PRD structure (problem, users, goals, requirements, success metrics), stakeholder consideration, and crispness of the written artefact. Do NOT penalise the candidate for not writing code.",
+  "Software Engineer":
+    "Grade on: code quality, problem-solving approach, system design thinking, implementation completeness, API/architecture clarity. Cross-verify the GitHub repo against their answers.",
+  "Data Analyst":
+    "Grade on: insight quality, SQL/analysis correctness, storytelling with data, metric relevance, and clarity of the analytical narrative. Do NOT expect UI designs or feature code.",
+  "UX Designer":
+    "Grade on: user empathy shown, design rationale clarity, research methodology, appropriateness of the proposed flow/wireframes. Do NOT penalise for not writing SQL or code.",
+  "Business Analyst":
+    "Grade on: process mapping accuracy, requirements completeness, stakeholder awareness, gap identification, and BRD structure. Do NOT expect code, UI mocks, or test cases.",
+  "QA Engineer":
+    "Grade on: test coverage breadth, edge case thinking, bug report clarity, risk identification, and traceability to acceptance criteria. Do NOT expect feature code implementations.",
+};
+
+const CODE_ROLES = new Set(["Software Engineer"]);
+
 async function fetchGithubRepo(url: string): Promise<{ repoContent: string; note: string; filesReviewed: string[]; accessible: boolean }> {
   const match = url.match(/github\.com\/([^\/]+)\/([^\/\?#]+)/);
   if (!match) {
@@ -19,13 +36,13 @@ async function fetchGithubRepo(url: string): Promise<{ repoContent: string; note
     if (!treeRes.ok || !treeData.tree) {
       return {
         repoContent: "",
-        note: "GitHub repository could not be accessed. It may be private, deleted, or an invalid URL. Penalise heavily for unverifiable submission. Max score: 40.",
+        note: "GitHub repository could not be accessed. It may be private, deleted, or an invalid URL.",
         filesReviewed: [],
         accessible: false,
       };
     }
 
-    const codeExtensions = ['.js', '.ts', '.py', '.java', '.cpp', '.jsx', '.tsx', '.sql', '.html', '.css', '.go', '.rs', '.php'];
+    const codeExtensions = ['.js', '.ts', '.py', '.java', '.cpp', '.jsx', '.tsx', '.sql', '.html', '.css', '.go', '.rs', '.php', '.ipynb', '.md'];
     const codeFiles = (treeData.tree as Array<{ path: string; type: string }>)
       .filter((f) => f.type === "blob" && codeExtensions.some((ext) => f.path.endsWith(ext)))
       .filter((f) => !f.path.includes('node_modules') && !f.path.includes('.min.'))
@@ -34,7 +51,7 @@ async function fetchGithubRepo(url: string): Promise<{ repoContent: string; note
     if (codeFiles.length === 0) {
       return {
         repoContent: "",
-        note: "Repository exists but contains no readable code files. Only config or asset files found. Penalise for lack of actual implementation.",
+        note: "Repository exists but contains no readable code/document files.",
         filesReviewed: [],
         accessible: true,
       };
@@ -56,7 +73,7 @@ async function fetchGithubRepo(url: string): Promise<{ repoContent: string; note
   } catch (e) {
     return {
       repoContent: "",
-      note: `GitHub fetch error: ${e instanceof Error ? e.message : "unknown"}. Penalise for unverifiable submission.`,
+      note: `GitHub fetch error: ${e instanceof Error ? e.message : "unknown"}.`,
       filesReviewed: [],
       accessible: false,
     };
@@ -67,50 +84,59 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { project, submission } = await req.json();
+    const { project, submission, role, level } = await req.json();
+    const roleName = (role as string) || "candidate";
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Fetch GitHub repo contents if applicable
+    const isCodeRole = CODE_ROLES.has(roleName);
+
+    // Only fetch GitHub contents for engineering roles — others submit docs/links.
     let repoSection = "";
-    let repoNote = "";
     let filesReviewed: string[] = [];
     let repoAccessible = false;
     const link = submission.submission_link || "";
     const isGithub = /github\.com\//i.test(link);
-    if (isGithub) {
+    if (isGithub && isCodeRole) {
       const r = await fetchGithubRepo(link);
-      repoNote = r.note;
       filesReviewed = r.filesReviewed;
       repoAccessible = r.accessible;
-      if (r.repoContent) {
-        repoSection = `\n\nACTUAL REPOSITORY CODE:\n${r.repoContent}`;
-      }
-      if (r.note) {
-        repoSection += `\n\nREPO ACCESS NOTE: ${r.note}`;
-      }
+      if (r.repoContent) repoSection = `\n\nACTUAL REPOSITORY CODE:\n${r.repoContent}`;
+      if (r.note) repoSection += `\n\nREPO ACCESS NOTE: ${r.note}`;
     }
 
-    const systemPrompt = `You are a senior hiring manager grading a take-home project submission.
-Be honest, constructive, and specific. Reference the candidate's actual content. Give actionable feedback.
-Return your evaluation via the grade_submission tool.
+    const roleFocus = ROLE_GRADING_FOCUS[roleName] || "Grade them only on what this role is expected to produce.";
 
-${isGithub ? `You have been given the actual code from the student's GitHub repository. You must:
-1. Verify the code actually exists and is not a placeholder or someone else's unrelated project. If the repo appears unrelated to the problem (e.g. it is a famous open source project, a template, or contains no code relevant to the challenge), set repo_mismatch: true and reduce score by 30 points minimum.
-2. Cross-verify the student's written answers against the actual code. If they claim to have built X but the code shows no evidence of X, flag this as inconsistency and reduce solution_quality score significantly.
-3. Check if the code shows genuine problem-solving effort relevant to the challenge domain. Generic boilerplate with no domain-specific logic should score low on solution_quality.
-4. Populate the code_review field in your response accordingly.` : ""}
+    const systemPrompt = `You are grading a ${roleName} submission at ${level || "unspecified"} level.
 
-Also analyse the student's written answers for signs of AI generation. Indicators include:
+CRITICAL ROLE-AWARE RULES:
+- Do NOT penalise a Product Manager for not writing code.
+- Do NOT penalise a UX Designer for not having SQL queries.
+- Do NOT penalise a QA Engineer for not shipping a feature.
+- Do NOT penalise a Business Analyst for not producing UI mocks.
+- Grade them ONLY on what a ${roleName} is expected to produce.
+
+${roleFocus}
+
+${isCodeRole ? `You have been given the actual code from the student's GitHub repository. You must:
+1. Verify the code actually exists and is not a placeholder or unrelated project. If the repo appears unrelated to the problem (famous open source project, template, or no relevant code), set repo_mismatch: true and reduce score by 30 points minimum.
+2. Cross-verify the student's written answers against the actual code. If they claim X but the code shows no evidence of X, flag inconsistency and reduce solution_quality significantly.
+3. Populate the code_review field accordingly.` : `This is NOT a code role. Leave code_review with repo_accessible=false, repo_relevant=false, repo_mismatch=false, empty arrays, and a brief note "not applicable for ${roleName}" in code_quality_observation. Do NOT fetch or expect code.`}
+
+Also analyse the student's written answers for signs of AI generation:
 - Overly structured language with perfect transitions
 - Generic examples not specific to the given problem
 - Buzzword-heavy sentences without concrete reasoning
-- Answers that cover all points perfectly without any personal uncertainty or gaps
-- No specific numbers, names, or domain details that show original thinking
+- No specific numbers, names, or domain details showing original thinking
 
-Populate the authenticity field. If likely_ai_generated is true with medium/high confidence, reduce the overall score by 10 points and set mentor_review_required: true regardless of score.`;
+If likely_ai_generated is true at medium/high confidence, reduce overall score by 10 and set mentor_review_required: true.
 
-    const userPrompt = `# PROJECT
+Be honest, constructive, and specific. Reference the candidate's actual content. Return your evaluation via the grade_submission tool.`;
+
+    const userPrompt = `# ROLE
+${roleName} (${level || "unspecified"} level)
+
+# PROJECT
 Title: ${project.title}
 Problem: ${project.problem_statement}
 Context: ${project.context}
@@ -139,7 +165,7 @@ ${submission.approach_text || "(not provided)"}
 Submission link: ${submission.submission_link || "(none)"}
 ${repoSection}
 
-Grade this submission against the rubric.`;
+Grade this submission against the rubric using ${roleName}-appropriate criteria.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -157,12 +183,12 @@ Grade this submission against the rubric.`;
           type: "function",
           function: {
             name: "grade_submission",
-            description: "Return a structured grading.",
+            description: "Return a structured role-aware grading.",
             parameters: {
               type: "object",
               properties: {
                 score: { type: "integer", description: "Overall score 0-100" },
-                feedback: { type: "string", description: "Markdown feedback. Sections: ## Strengths, ## Areas to improve, ## Verdict. Reference candidate's words and actual code if provided." },
+                feedback: { type: "string", description: "Markdown feedback. Sections: ## Strengths, ## Areas to improve, ## Verdict. Must be framed in role-specific terms." },
                 code_review: {
                   type: "object",
                   properties: {
@@ -170,7 +196,7 @@ Grade this submission against the rubric.`;
                     repo_relevant: { type: "boolean" },
                     repo_mismatch: { type: "boolean" },
                     files_reviewed: { type: "array", items: { type: "string" } },
-                    code_quality_observation: { type: "string", description: "2-3 sentences on what the code actually does and its quality" },
+                    code_quality_observation: { type: "string" },
                     answers_match_code: { type: "boolean" },
                     inconsistencies_found: { type: "array", items: { type: "string" } },
                   },
@@ -220,8 +246,7 @@ Grade this submission against the rubric.`;
     if (!toolCall) throw new Error("No grading returned");
     const grading = JSON.parse(toolCall.function.arguments);
 
-    // Inject known metadata if model missed it
-    if (isGithub && grading.code_review) {
+    if (isCodeRole && grading.code_review) {
       if (!grading.code_review.files_reviewed?.length && filesReviewed.length) {
         grading.code_review.files_reviewed = filesReviewed;
       }
