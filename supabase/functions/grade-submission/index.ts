@@ -80,6 +80,69 @@ async function fetchGithubRepo(url: string): Promise<{ repoContent: string; note
   }
 }
 
+async function fetchGoogleDoc(url: string): Promise<{ content: string; note: string; accessible: boolean }> {
+  try {
+    const docIdMatch = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+    if (!docIdMatch) {
+      return { content: "", note: "Link does not appear to be a valid Google Doc URL.", accessible: false };
+    }
+    const docId = docIdMatch[1];
+    const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
+    const res = await fetch(exportUrl);
+    if (!res.ok) {
+      return { content: "", note: "Google Doc could not be fetched. Document may be private or restricted. Set sharing to 'Anyone with the link can view'.", accessible: false };
+    }
+    const text = await res.text();
+    if (!text || text.trim().length < 50) {
+      return { content: "", note: "Google Doc appears to be empty or contains very little content.", accessible: true };
+    }
+    return { content: text.slice(0, 10000), note: "", accessible: true };
+  } catch (e) {
+    return { content: "", note: `Google Doc fetch error: ${e instanceof Error ? e.message : "unknown"}`, accessible: false };
+  }
+}
+
+async function fetchNotionPage(url: string): Promise<{ content: string; note: string; accessible: boolean }> {
+  try {
+    const FIRECRAWL_KEY = "fc-10da60780de844ce88c97e395542df15";
+    const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${FIRECRAWL_KEY}` },
+      body: JSON.stringify({ url, formats: ["markdown"] }),
+    });
+    if (!res.ok) {
+      return { content: "", note: "Notion page could not be fetched via Firecrawl. Page may be private.", accessible: false };
+    }
+    const data = await res.json();
+    const content = data?.data?.markdown || data?.markdown || "";
+    if (!content || content.trim().length < 50) {
+      return { content: "", note: "Notion page appears empty or could not be read. Ensure page is set to public.", accessible: true };
+    }
+    return { content: content.slice(0, 10000), note: "", accessible: true };
+  } catch (e) {
+    return { content: "", note: `Notion fetch error: ${e instanceof Error ? e.message : "unknown"}`, accessible: false };
+  }
+}
+
+async function fetchGenericUrl(url: string): Promise<{ content: string; note: string; accessible: boolean }> {
+  try {
+    const FIRECRAWL_KEY = "fc-10da60780de844ce88c97e395542df15";
+    const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${FIRECRAWL_KEY}` },
+      body: JSON.stringify({ url, formats: ["markdown"] }),
+    });
+    if (!res.ok) {
+      return { content: "", note: "URL could not be fetched. Ensure the link is publicly accessible.", accessible: false };
+    }
+    const data = await res.json();
+    const content = data?.data?.markdown || data?.markdown || "";
+    return { content: content.slice(0, 8000), note: "", accessible: !!content };
+  } catch (e) {
+    return { content: "", note: `URL fetch error: ${e instanceof Error ? e.message : "unknown"}`, accessible: false };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
