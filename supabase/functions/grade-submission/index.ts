@@ -80,6 +80,69 @@ async function fetchGithubRepo(url: string): Promise<{ repoContent: string; note
   }
 }
 
+async function fetchGoogleDoc(url: string): Promise<{ content: string; note: string; accessible: boolean }> {
+  try {
+    const docIdMatch = url.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+    if (!docIdMatch) {
+      return { content: "", note: "Link does not appear to be a valid Google Doc URL.", accessible: false };
+    }
+    const docId = docIdMatch[1];
+    const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
+    const res = await fetch(exportUrl);
+    if (!res.ok) {
+      return { content: "", note: "Google Doc could not be fetched. Document may be private or restricted. Set sharing to 'Anyone with the link can view'.", accessible: false };
+    }
+    const text = await res.text();
+    if (!text || text.trim().length < 50) {
+      return { content: "", note: "Google Doc appears to be empty or contains very little content.", accessible: true };
+    }
+    return { content: text.slice(0, 10000), note: "", accessible: true };
+  } catch (e) {
+    return { content: "", note: `Google Doc fetch error: ${e instanceof Error ? e.message : "unknown"}`, accessible: false };
+  }
+}
+
+async function fetchNotionPage(url: string): Promise<{ content: string; note: string; accessible: boolean }> {
+  try {
+    const FIRECRAWL_KEY = "fc-10da60780de844ce88c97e395542df15";
+    const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${FIRECRAWL_KEY}` },
+      body: JSON.stringify({ url, formats: ["markdown"] }),
+    });
+    if (!res.ok) {
+      return { content: "", note: "Notion page could not be fetched via Firecrawl. Page may be private.", accessible: false };
+    }
+    const data = await res.json();
+    const content = data?.data?.markdown || data?.markdown || "";
+    if (!content || content.trim().length < 50) {
+      return { content: "", note: "Notion page appears empty or could not be read. Ensure page is set to public.", accessible: true };
+    }
+    return { content: content.slice(0, 10000), note: "", accessible: true };
+  } catch (e) {
+    return { content: "", note: `Notion fetch error: ${e instanceof Error ? e.message : "unknown"}`, accessible: false };
+  }
+}
+
+async function fetchGenericUrl(url: string): Promise<{ content: string; note: string; accessible: boolean }> {
+  try {
+    const FIRECRAWL_KEY = "fc-10da60780de844ce88c97e395542df15";
+    const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${FIRECRAWL_KEY}` },
+      body: JSON.stringify({ url, formats: ["markdown"] }),
+    });
+    if (!res.ok) {
+      return { content: "", note: "URL could not be fetched. Ensure the link is publicly accessible.", accessible: false };
+    }
+    const data = await res.json();
+    const content = data?.data?.markdown || data?.markdown || "";
+    return { content: content.slice(0, 8000), note: "", accessible: !!content };
+  } catch (e) {
+    return { content: "", note: `URL fetch error: ${e instanceof Error ? e.message : "unknown"}`, accessible: false };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -97,12 +160,52 @@ serve(async (req) => {
     let repoAccessible = false;
     const link = submission.submission_link || "";
     const isGithub = /github\.com\//i.test(link);
+    const isGoogleDoc = /docs\.google\.com\/document/i.test(link);
+    const isNotion = /notion\.so\//i.test(link);
+    const isFigma = /figma\.com\//i.test(link);
+    const hasLink = !!link && link.trim().length > 0;
+    let fetchedContent = "";
+    let fetchNote = "";
+    let fetchAccessible = false;
+
     if (isGithub && isCodeRole) {
       const r = await fetchGithubRepo(link);
       filesReviewed = r.filesReviewed;
       repoAccessible = r.accessible;
-      if (r.repoContent) repoSection = `\n\nACTUAL REPOSITORY CODE:\n${r.repoContent}`;
+      if (r.repoContent) {
+        repoSection = `\n\nACTUAL REPOSITORY CODE:\n${r.repoContent}`;
+        fetchedContent = r.repoContent;
+        fetchAccessible = true;
+      }
       if (r.note) repoSection += `\n\nREPO ACCESS NOTE: ${r.note}`;
+      fetchNote = r.note;
+    } else if (isGoogleDoc) {
+      const r = await fetchGoogleDoc(link);
+      fetchedContent = r.content;
+      fetchNote = r.note;
+      fetchAccessible = r.accessible;
+      repoSection = r.content
+        ? `\n\nCONTENT FROM THEIR GOOGLE DOC:\n${r.content}`
+        : `\n\nGOOGLE DOC NOTE: ${r.note}`;
+    } else if (isNotion) {
+      const r = await fetchNotionPage(link);
+      fetchedContent = r.content;
+      fetchNote = r.note;
+      fetchAccessible = r.accessible;
+      repoSection = r.content
+        ? `\n\nCONTENT FROM THEIR NOTION PAGE:\n${r.content}`
+        : `\n\nNOTION PAGE NOTE: ${r.note}`;
+    } else if (isFigma) {
+      repoSection = `\n\nFIGMA LINK SUBMITTED: ${link}\nNote: Figma files cannot be read by AI. Grade written answers only. This submission is automatically flagged for human mentor review who will evaluate the actual design.`;
+      fetchNote = "Figma file — requires mentor review";
+    } else if (hasLink && !isGithub) {
+      const r = await fetchGenericUrl(link);
+      fetchedContent = r.content;
+      fetchNote = r.note;
+      fetchAccessible = r.accessible;
+      repoSection = r.content
+        ? `\n\nCONTENT FROM SUBMITTED LINK:\n${r.content}`
+        : `\n\nLINK ACCESS NOTE: ${r.note}`;
     }
 
     const roleFocus = ROLE_GRADING_FOCUS[roleName] || "Grade them only on what this role is expected to produce.";
@@ -118,10 +221,18 @@ CRITICAL ROLE-AWARE RULES:
 
 ${roleFocus}
 
-${isCodeRole ? `You have been given the actual code from the student's GitHub repository. You must:
-1. Verify the code actually exists and is not a placeholder or unrelated project. If the repo appears unrelated to the problem (famous open source project, template, or no relevant code), set repo_mismatch: true and reduce score by 30 points minimum.
-2. Cross-verify the student's written answers against the actual code. If they claim X but the code shows no evidence of X, flag inconsistency and reduce solution_quality significantly.
-3. Populate the code_review field accordingly.` : `This is NOT a code role. Leave code_review with repo_accessible=false, repo_relevant=false, repo_mismatch=false, empty arrays, and a brief note "not applicable for ${roleName}" in code_quality_observation. Do NOT fetch or expect code.`}
+${isFigma
+  ? `This is a UX Designer submission with a Figma link. You CANNOT read the Figma file. Grade ONLY the written answers. Set mentor_review_required: true always. Note in feedback that design will be reviewed by a mentor. Leave code_review fields as not applicable.`
+  : fetchedContent
+  ? `You have been given the actual content from the student's submitted work (${isGithub ? 'GitHub repository' : isGoogleDoc ? 'Google Doc' : isNotion ? 'Notion page' : 'submitted link'}). You must:
+1. Verify the content is actually relevant to the project problem and not a placeholder or someone else's work.
+2. Cross-verify their written answers against the actual submitted content. If they claim X but the document shows no evidence of X, flag this.
+3. If content appears completely unrelated to the challenge, reduce score by 25 points and explain.
+4. For code (SDE/Data roles): populate code_review fully. For document roles (PM/BA/QA/UX): set repo_accessible based on whether the doc was readable, repo_relevant based on content relevance, code_quality_observation to describe doc quality.`
+  : hasLink
+  ? `A submission link was provided but could not be fetched. Reason: ${fetchNote}. Grade based on written answers only. Note in feedback that the submission link could not be verified and the student should check their sharing settings. Reduce score by 15 points for unverifiable submission.`
+  : `No submission link was provided. Grade based on written answers only. Note this in feedback.`
+}
 
 Also analyse the student's written answers for signs of AI generation:
 - Overly structured language with perfect transitions
