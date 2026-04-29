@@ -5,21 +5,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const ROLE_DELIVERABLES: Record<string, string> = {
-  "Product Manager":
-    "PRDs, user stories, feature prioritization frameworks, roadmaps, OKRs, go-to-market plans — NO CODE",
-  "Software Engineer":
-    "working code in a GitHub repo, system design documents, API specifications, technical architecture — CODE IS REQUIRED",
-  "Data Analyst":
-    "SQL queries, data analysis reports, dashboard designs, metric frameworks, insight documents — NO UI DESIGN OR CODE FEATURES",
-  "UX Designer":
-    "user flows, wireframes in Figma, usability audit reports, research plans, design rationale — NO CODE OR SQL",
-  "Business Analyst":
-    "BRDs, process flow documents, gap analysis reports, use case specifications, stakeholder maps — NO CODE OR UI DESIGN",
-  "QA Engineer":
-    "test plans, test cases, bug reports, edge case analysis, acceptance criteria — NO FEATURE IMPLEMENTATION",
-};
-
 const ROLE_FORMATS: Record<string, string> = {
   "Product Manager": "PRD document or Google Doc",
   "Software Engineer": "GitHub repository",
@@ -29,133 +14,203 @@ const ROLE_FORMATS: Record<string, string> = {
   "QA Engineer": "Word document or Google Doc with test cases",
 };
 
-function getRoleDeliverables(role: string): string {
-  return ROLE_DELIVERABLES[role] || "role-appropriate documents";
-}
+const DOMAINS = ["fintech", "edtech", "healthtech", "consumer", "b2b-saas", "logistics"];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { roleName, roleSlug, level } = await req.json();
+    const body = await req.json();
+    const { roleName, roleSlug, level } = body;
     const role = roleName as string;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const levelKey = String(level || "").toLowerCase();
-    const deliverableCounts: Record<string, { min: number; max: number }> = {
-      beginner: { min: 1, max: 1 },
-      intermediate: { min: 3, max: 4 },
-      advanced: { min: 4, max: 5 },
-    };
-    const hintCounts: Record<string, { min: number; max: number }> = {
-      beginner: { min: 3, max: 3 },
-      intermediate: { min: 2, max: 3 },
-      advanced: { min: 1, max: 1 },
-    };
     const estimatedHoursByLevel: Record<string, string> = {
       beginner: "2-3 hours",
       intermediate: "3-5 hours",
       advanced: "5-8 hours",
     };
-    const dCount = deliverableCounts[levelKey] || { min: 3, max: 5 };
-    const hCount = hintCounts[levelKey] || { min: 2, max: 3 };
     const targetHours = estimatedHoursByLevel[levelKey] || "3-5 hours";
+    const domain = body.domain || DOMAINS[Math.floor(Math.random() * DOMAINS.length)];
 
-    const systemPrompt = `You are an expert industry mentor creating a project challenge for a ${role} at ${level} level.
+    const systemPrompt = `You are an expert industry mentor creating a project challenge. You have two absolute constraints that BOTH must be satisfied simultaneously:
 
-CRITICAL ROLE RULES YOU MUST FOLLOW:
-1. The deliverables must ONLY be things a ${role} actually produces in their day-to-day job.
-2. NEVER ask a Product Manager to write code.
-3. NEVER ask a UX Designer to write SQL or Python.
-4. NEVER ask a QA Engineer to build features.
-5. NEVER ask a Software Engineer to write a BRD.
-6. NEVER ask a Data Analyst to design UI flows.
-7. NEVER ask a Business Analyst to write test cases.
-8. The problem must be from a real industry domain (fintech, edtech, healthtech, consumer, b2b-saas, logistics, etc.).
-9. The context must feel like a real company situation a ${role} would actually face at work.
+CONSTRAINT 1 — ROLE: ${role}
+CONSTRAINT 2 — LEVEL: ${level}
 
-For ${role}, the student should produce: ${getRoleDeliverables(role)}
-Recommended submission format for this role: ${ROLE_FORMATS[role] || "role-appropriate document"}.
+These constraints are equally non-negotiable.
+A Product Manager never writes code.
+A Software Engineer never writes a BRD.
+A QA Engineer never designs UI.
+A beginner never gets an ambiguous strategic problem.
+An advanced student never gets a fully defined single-screen task.
 
-LEVEL ENFORCEMENT RULES — THIS IS CRITICAL:
-The student's level is: ${level}
+Both constraints must be satisfied in every single field of your response — title, problem statement, deliverables, rubric, and hints.
 
-BEGINNER projects must:
-- Have a single, clearly defined problem with no ambiguity
-- Require only ONE deliverable type (one document, one flow, one analysis — not multiple)
-- Have a well-scoped problem that can be solved in 2-3 hours
-- Avoid asking for strategic thinking, multi-stakeholder management, or complex tradeoffs
-- Use simple, familiar domains the student already knows
-- Include more detailed hints that guide their thinking
-- Example scope: 'redesign this one screen' not 'redesign the entire product'
-- Rubric should reward attempt and clarity of thinking more than perfection
+---
 
-INTERMEDIATE projects must:
-- Have moderate ambiguity — problem is clear but solution requires judgement
-- Require 3-4 deliverables that build on each other
-- Involve at least one tradeoff or prioritization decision
-- Can have 2 user types or stakeholders but not more
-- Should take 3-5 hours of genuine effort
-- Include 2-3 hints that point direction without giving answers
-- Rubric should reward reasoning quality and decision justification
+ROLE + LEVEL COMBINATIONS — use these as your exact reference:
 
-ADVANCED projects must:
-- Be genuinely ambiguous — student must first define what the real problem is
-- Involve multiple stakeholders with competing interests
-- Require strategic thinking beyond the immediate feature
-- Have business context that complicates the solution
-- Should take 5-8 hours of deep thinking
-- Include only 1 hint that is directional not prescriptive
-- Rubric should reward systems thinking, assumption identification, and strategic clarity
+PRODUCT MANAGER + BEGINNER:
+Problem type: Single well-defined feature request from a real user pain point
+Deliverables: User stories (5-7), acceptance criteria, simple priority justification
+Complexity: One user type, one feature, no competing stakeholders
+Example title: "Write user stories for a bill-split feature in a payments app"
+Hints: 3 detailed hints explaining frameworks to use
 
-SPECIFIC LEVEL RULES BY ROLE:
+PRODUCT MANAGER + INTERMEDIATE:
+Problem type: Feature with competing priorities or multiple user types
+Deliverables: PRD (problem, solution, user stories, success metrics), prioritization rationale, risk identification
+Complexity: 2 stakeholder types, one tradeoff decision
+Example title: "Prioritize 4 competing features for a healthtech app's next sprint"
+Hints: 2-3 directional hints
 
-Product Manager + Beginner: Write user stories and acceptance criteria for ONE clearly defined feature. No roadmap. No prioritization.
-Product Manager + Intermediate: Prioritize between competing features OR write a PRD for a moderately complex feature with multiple user types.
-Product Manager + Advanced: Define the problem yourself from ambiguous signals, propose strategy, write roadmap with tradeoffs explained.
+PRODUCT MANAGER + ADVANCED:
+Problem type: Ambiguous business problem requiring problem definition before solution
+Deliverables: Problem statement, strategic roadmap, OKRs, go-to-market consideration, risk analysis
+Complexity: Multiple departments, business vs user tension, strategic implications
+Example title: "Retention is dropping but revenue is up — define the real problem and propose strategy"
+Hints: 1 challenging question only
 
-Software Engineer + Beginner: Build one small working feature. Requirements are fully specified. Tech stack is flexible. No system design needed.
-Software Engineer + Intermediate: Build a system with 2-3 components. Make some design decisions. Basic API or database design required.
-Software Engineer + Advanced: Design for scale, performance, or security. Architecture decisions matter. Edge cases must be handled.
+---
 
-Data Analyst + Beginner: Analyse one dataset, answer one clear question, present findings simply.
-Data Analyst + Intermediate: Investigate a metric drop or anomaly. Form hypothesis. Test it. Present with recommendations.
-Data Analyst + Advanced: Ambiguous data, multiple possible causes, requires defining your own metrics and storytelling for a business audience.
+SOFTWARE ENGINEER + BEGINNER:
+Problem type: Build one small, fully specified feature
+Deliverables: Working code in GitHub repo, README explaining approach, basic test cases
+Complexity: Single component, flexible tech stack, clear requirements, no design decisions needed
+Example title: "Build a working to-do list app with add, edit, delete and completion toggle"
+Hints: 3 hints about implementation approach
 
-UX Designer + Beginner: Audit and redesign ONE specific screen. Clear user and goal provided.
-UX Designer + Intermediate: Design a multi-step flow considering different user states, errors, and edge cases.
-UX Designer + Advanced: Full research plan + design for an ambiguous user problem. Multiple personas. Justify every decision.
+SOFTWARE ENGINEER + INTERMEDIATE:
+Problem type: Build a system with multiple components requiring design decisions
+Deliverables: Working code in GitHub, system design explanation, API documentation, error handling
+Complexity: 2-3 components, database design, some architectural choices
+Example title: "Build a URL shortener with click tracking and basic analytics dashboard"
+Hints: 2 hints about architecture decisions
 
-Business Analyst + Beginner: Map one existing process. Identify obvious gaps. One stakeholder.
-Business Analyst + Intermediate: Write requirements for a new system. Multiple stakeholders. Some conflicting needs.
-Business Analyst + Advanced: Complex organisational transformation. Conflicting departments. Phased requirements with risk assessment.
+SOFTWARE ENGINEER + ADVANCED:
+Problem type: Design and build for scale, performance, or security with real constraints
+Deliverables: Working implementation or detailed technical design, architecture decisions with tradeoff explanations, handling of edge cases and failure scenarios
+Complexity: Distributed systems, performance constraints, security considerations
+Example title: "Design a notification system for 1 million users — handle queue, failures, and retry logic"
+Hints: 1 hint as a challenging constraint
 
-QA Engineer + Beginner: Write test cases for ONE feature. Happy path plus 3-4 edge cases. No test strategy needed.
-QA Engineer + Intermediate: Full test plan for one feature. Multiple test types. Basic risk assessment.
-QA Engineer + Advanced: End-to-end QA strategy for a product launch. All testing types. Risk matrix. Go/no-go criteria.
+---
 
-HINT STYLE BY LEVEL:
-- Beginner: 3 detailed hints that explain HOW to think about the problem, point to specific frameworks (e.g. 'Try using the MoSCoW prioritization method'), and suggest what to include in each deliverable.
-- Intermediate: 2-3 hints that suggest direction without giving answers. Point to frameworks but let the student decide how to apply them.
-- Advanced: 1 hint maximum. Should be a question that challenges their thinking rather than guidance (e.g. 'Have you considered what happens to your solution if the constraint changes in 6 months?').
+DATA ANALYST + BEGINNER:
+Problem type: Analyse one dataset, answer one clear business question
+Deliverables: SQL queries or Python analysis, written findings (3-5 key insights), simple visualisation description
+Complexity: One dataset, one clear question, familiar metrics
+Example title: "Analyse monthly sales data and identify the top 3 performing product categories"
+Hints: 3 hints about which metrics to look at
 
-ESTIMATED HOURS MUST BE EXACTLY:
-- Beginner: "2-3 hours"
-- Intermediate: "3-5 hours"
-- Advanced: "5-8 hours"
-For this student (${level}), set estimated_hours to exactly "${targetHours}".
+DATA ANALYST + INTERMEDIATE:
+Problem type: Investigate a metric anomaly or business problem using data
+Deliverables: Hypothesis, analysis approach, SQL or Python code, findings with recommendations
+Complexity: Multiple possible causes, requires forming and testing hypotheses
+Example title: "User signups dropped 30% in Q3 — investigate why using the provided dataset"
+Hints: 2 hints about investigation approach
 
-CALIBRATION CHECK — before returning the JSON, verify internally:
-1. Would a first-year student with no internship experience be able to attempt this if Beginner?
-2. Would this require genuine industry judgement if Advanced?
-3. Are the deliverables achievable in the estimated hours?
-4. Do the deliverables match the role — no code for PM, no PRDs for SDE?
-If any check fails, regenerate before returning.
+DATA ANALYST + ADVANCED:
+Problem type: Ambiguous business situation requiring metric definition, analysis, and strategic recommendation
+Deliverables: Metric framework definition, full analysis, segmentation, insight narrative for business audience, action recommendations
+Complexity: Multiple datasets, ambiguous question, requires storytelling and business judgment
+Example title: "6 months of product data — define retention metrics, identify at-risk users, recommend interventions"
+Hints: 1 hint as a framing question
 
-Return your output via the create_project tool. Every field must be strictly role-appropriate for a ${role} AND strictly calibrated to ${level} level.`;
+---
 
-    const userPrompt = `Generate a unique, fresh project challenge for a ${role} at ${level} level. Pick a specific fictional company with a realistic situation. The problem must be one a ${role} would actually own at work. Deliverables must ONLY include artefacts a ${role} produces.`;
+UX DESIGNER + BEGINNER:
+Problem type: Audit and redesign ONE specific screen
+Deliverables: Usability issues list (5-7 issues with severity), redesign proposal with user flow, Figma wireframes or hand-drawn sketches, design rationale
+Complexity: One screen, one user type, clear usability problems
+Example title: "Audit the checkout screen of a food delivery app and propose a redesign"
+Hints: 3 hints about usability heuristics to apply
+
+UX DESIGNER + INTERMEDIATE:
+Problem type: Design a complete multi-step flow considering different user states
+Deliverables: User flow diagram, wireframes for all states (empty, loading, error, success), design decisions explained, edge cases covered
+Complexity: Multi-step process, 2 user types, error and empty states required
+Example title: "Design the onboarding flow for a first-time investor on a trading app"
+Hints: 2 hints about flow considerations
+
+UX DESIGNER + ADVANCED:
+Problem type: Research-driven design for an ambiguous user problem
+Deliverables: Research plan, user personas, insight synthesis, proposed solution with wireframes, design rationale with tradeoffs
+Complexity: Ambiguous user needs, multiple personas, research methodology required before design
+Example title: "Users are not adopting the savings feature — research why and propose a redesign"
+Hints: 1 challenging research question
+
+---
+
+BUSINESS ANALYST + BEGINNER:
+Problem type: Map one existing process and identify obvious inefficiencies
+Deliverables: AS-IS process flow (step by step), list of inefficiencies with impact, 3-5 improvement recommendations
+Complexity: One process, one department, one stakeholder type
+Example title: "Map the employee onboarding process at a 50-person startup and identify inefficiencies"
+Hints: 3 hints about process mapping methodology
+
+BUSINESS ANALYST + INTERMEDIATE:
+Problem type: Gather requirements for a new system from multiple stakeholders
+Deliverables: BRD (scope, functional requirements, use cases, assumptions, constraints), stakeholder map, open questions list
+Complexity: Multiple stakeholders, some conflicting needs, requires prioritization of requirements
+Example title: "Write a BRD for a leave management system for a company with HR, managers, and employees"
+Hints: 2 hints about requirements gathering
+
+BUSINESS ANALYST + ADVANCED:
+Problem type: Complex organisational transformation with competing departments
+Deliverables: Current state analysis, gap analysis, phased TO-BE requirements, risk register, change impact assessment
+Complexity: Multiple departments with conflicting goals, phased implementation, risk identification
+Example title: "A logistics company moving from manual to digital — gap analysis and phased requirements for 3 departments"
+Hints: 1 hint about stakeholder conflict resolution
+
+---
+
+QA ENGINEER + BEGINNER:
+Problem type: Write test cases for one clearly defined feature
+Deliverables: Test cases (minimum 15) covering happy path, negative cases, and 3-4 edge cases, basic test data examples
+Complexity: Single feature, well-defined requirements, no integration testing needed
+Example title: "Write test cases for a login page covering all possible scenarios"
+Hints: 3 hints about test case structure and edge cases to consider
+
+QA ENGINEER + INTERMEDIATE:
+Problem type: Create a complete test plan for a feature or integration
+Deliverables: Test strategy, test cases by type (functional, negative, boundary, UI), risk assessment, entry and exit criteria
+Complexity: Multiple test types, integration touchpoints, basic risk identification
+Example title: "Write a complete test plan for a payment gateway integration"
+Hints: 2 hints about test coverage and risk areas
+
+QA ENGINEER + ADVANCED:
+Problem type: End-to-end QA strategy for a product launch or major release
+Deliverables: Full QA strategy document, all testing types covered (functional, performance, security, regression, UAT), risk matrix, go/no-go criteria, test environment requirements
+Complexity: Product-wide scope, multiple teams, release pressure, risk-based prioritization
+Example title: "A fintech app goes live in 30 days — write the complete QA strategy and go/no-go criteria"
+Hints: 1 hint as a risk-framing question
+
+---
+
+DOMAIN INTEGRATION — ${domain}:
+The company context and problem must be from the ${domain} industry. The problem type and deliverables stay exactly as defined above for the role+level combination. Domain only affects the company, product, and problem scenario — never the deliverable type.
+
+Correct: PM + Beginner + Fintech = write user stories for a KYC feature in a lending app (still user stories, just fintech context)
+Wrong: PM + Beginner + Fintech = write SQL queries to analyse loan data (SQL is never a PM deliverable)
+
+---
+
+SELF-CHECK before returning JSON:
+Ask yourself these 4 questions:
+1. Would a ${role} actually produce these deliverables at their job? If no — regenerate.
+2. Is the complexity appropriate for ${level}? If no — regenerate.
+3. Does the domain (${domain}) appear in the company context and problem? If no — add it.
+4. Are there any deliverables that belong to a different role? If yes — remove them and replace with correct ones.
+
+Only return the JSON after passing all 4 checks. Set estimated_hours to exactly "${targetHours}". Set recommended_format to: "${ROLE_FORMATS[role] || "role-appropriate document"}".
+
+Return your output via the create_project tool.`;
+
+    const userPrompt = `Generate a unique, fresh project challenge for a ${role} at ${level} level in the ${domain} industry. Pick a specific fictional company with a realistic situation. The problem and deliverables MUST exactly match the ${role} + ${level} combination defined in the system prompt.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -173,47 +228,47 @@ Return your output via the create_project tool. Every field must be strictly rol
           type: "function",
           function: {
             name: "create_project",
-            description: "Return a structured role-specific project challenge.",
+            description: "Return a structured role+level appropriate project challenge.",
             parameters: {
               type: "object",
               properties: {
-                title: { type: "string", description: "Specific actionable project title that clearly states what the student will do" },
-                company_context: { type: "string", description: "2-3 sentences about a specific fictional company — include company name, size, product, and current situation" },
-                problem_statement: { type: "string", description: "3 paragraphs — p1: background and context, p2: the specific problem with data/numbers, p3: what is at stake if not solved" },
+                title: { type: "string", description: "Action-oriented title stating exactly what the student will do" },
+                company_context: { type: "string", description: `Fictional company name, size, product, current situation in ${domain}` },
+                problem_statement: { type: "string", description: "Three paragraphs: background, specific problem with numbers, stakes if unsolved" },
                 deliverables: {
                   type: "array",
-                  description: `Between ${dCount.min} and ${dCount.max} deliverables, each strictly appropriate for a ${role} at ${level} level. ${getRoleDeliverables(role)}`,
                   items: { type: "string" },
-                  minItems: dCount.min,
-                  maxItems: dCount.max,
+                  minItems: 1,
+                  maxItems: 7,
+                  description: `Deliverables matching exactly the ${role} + ${level} combination from the system prompt`,
                 },
                 evaluation_rubric: {
                   type: "array",
-                  description: `Four rubric criteria, each worth 25 points, tailored to the ${role} role and calibrated to ${level} level expectations`,
                   items: {
                     type: "object",
                     properties: {
                       criteria: { type: "string" },
                       points: { type: "integer" },
-                      description: { type: "string", description: `Specific to ${role} at ${level} level` },
+                      description: { type: "string" },
                     },
                     required: ["criteria", "points", "description"],
                     additionalProperties: false,
                   },
                   minItems: 4,
                   maxItems: 4,
+                  description: "Four rubric criteria, 25 points each: Problem Understanding, Solution Quality, Communication and Clarity, Feasibility and Practicality",
                 },
                 hints: {
                   type: "array",
                   items: { type: "string" },
-                  minItems: hCount.min,
-                  maxItems: hCount.max,
-                  description: `${hCount.min === hCount.max ? hCount.min : `${hCount.min}-${hCount.max}`} hints calibrated to ${level} level (see HINT STYLE BY LEVEL in system prompt)`,
+                  minItems: 1,
+                  maxItems: 3,
+                  description: `Number and style of hints calibrated to ${level} (beginner: 3 detailed, intermediate: 2-3 directional, advanced: 1 challenging question)`,
                 },
-                estimated_hours: { type: "string", description: `Must be exactly "${targetHours}" for a ${level} student.` },
-                recommended_format: { type: "string", description: `Submission format suited to ${role}` },
-                domain: { type: "string", description: "Industry domain e.g. fintech, edtech, consumer, b2b-saas" },
-                focus_area: { type: "string", description: "Specific skill area being tested for this role" },
+                estimated_hours: { type: "string", description: `Must be exactly "${targetHours}"` },
+                recommended_format: { type: "string" },
+                domain: { type: "string" },
+                focus_area: { type: "string", description: `Specific skill area being tested for ${role}` },
               },
               required: ["title", "company_context", "problem_statement", "deliverables", "evaluation_rubric", "hints", "estimated_hours", "recommended_format", "domain", "focus_area"],
               additionalProperties: false,
@@ -245,7 +300,6 @@ Return your output via the create_project tool. Every field must be strictly rol
     if (!toolCall) throw new Error("No project generated");
     const raw = JSON.parse(toolCall.function.arguments);
 
-    // Flatten structured fields into the existing DB text columns so storage stays compatible.
     const deliverablesText = Array.isArray(raw.deliverables)
       ? raw.deliverables.map((d: string) => `- ${d}`).join("\n")
       : String(raw.deliverables || "");
@@ -261,7 +315,7 @@ Return your output via the create_project tool. Every field must be strictly rol
       ? `\n\n**Hints**\n${raw.hints.map((h: string) => `- ${h}`).join("\n")}`
       : "";
 
-    const finalHours = targetHours; // enforce server-side regardless of model output
+    const finalHours = targetHours;
     const contextText = `${raw.company_context || ""}${hintsText}\n\n_Estimated time: ${finalHours}. Recommended format: ${raw.recommended_format || ""}._`;
 
     const project = {
@@ -270,7 +324,7 @@ Return your output via the create_project tool. Every field must be strictly rol
       context: contextText,
       deliverables: deliverablesText,
       evaluation_rubric: rubricText,
-      domain: raw.domain,
+      domain: raw.domain || domain,
       focus_area: raw.focus_area,
       difficulty_level: level,
       role_slug: roleSlug,
