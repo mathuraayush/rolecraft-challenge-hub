@@ -160,12 +160,52 @@ serve(async (req) => {
     let repoAccessible = false;
     const link = submission.submission_link || "";
     const isGithub = /github\.com\//i.test(link);
+    const isGoogleDoc = /docs\.google\.com\/document/i.test(link);
+    const isNotion = /notion\.so\//i.test(link);
+    const isFigma = /figma\.com\//i.test(link);
+    const hasLink = !!link && link.trim().length > 0;
+    let fetchedContent = "";
+    let fetchNote = "";
+    let fetchAccessible = false;
+
     if (isGithub && isCodeRole) {
       const r = await fetchGithubRepo(link);
       filesReviewed = r.filesReviewed;
       repoAccessible = r.accessible;
-      if (r.repoContent) repoSection = `\n\nACTUAL REPOSITORY CODE:\n${r.repoContent}`;
+      if (r.repoContent) {
+        repoSection = `\n\nACTUAL REPOSITORY CODE:\n${r.repoContent}`;
+        fetchedContent = r.repoContent;
+        fetchAccessible = true;
+      }
       if (r.note) repoSection += `\n\nREPO ACCESS NOTE: ${r.note}`;
+      fetchNote = r.note;
+    } else if (isGoogleDoc) {
+      const r = await fetchGoogleDoc(link);
+      fetchedContent = r.content;
+      fetchNote = r.note;
+      fetchAccessible = r.accessible;
+      repoSection = r.content
+        ? `\n\nCONTENT FROM THEIR GOOGLE DOC:\n${r.content}`
+        : `\n\nGOOGLE DOC NOTE: ${r.note}`;
+    } else if (isNotion) {
+      const r = await fetchNotionPage(link);
+      fetchedContent = r.content;
+      fetchNote = r.note;
+      fetchAccessible = r.accessible;
+      repoSection = r.content
+        ? `\n\nCONTENT FROM THEIR NOTION PAGE:\n${r.content}`
+        : `\n\nNOTION PAGE NOTE: ${r.note}`;
+    } else if (isFigma) {
+      repoSection = `\n\nFIGMA LINK SUBMITTED: ${link}\nNote: Figma files cannot be read by AI. Grade written answers only. This submission is automatically flagged for human mentor review who will evaluate the actual design.`;
+      fetchNote = "Figma file — requires mentor review";
+    } else if (hasLink && !isGithub) {
+      const r = await fetchGenericUrl(link);
+      fetchedContent = r.content;
+      fetchNote = r.note;
+      fetchAccessible = r.accessible;
+      repoSection = r.content
+        ? `\n\nCONTENT FROM SUBMITTED LINK:\n${r.content}`
+        : `\n\nLINK ACCESS NOTE: ${r.note}`;
     }
 
     const roleFocus = ROLE_GRADING_FOCUS[roleName] || "Grade them only on what this role is expected to produce.";
