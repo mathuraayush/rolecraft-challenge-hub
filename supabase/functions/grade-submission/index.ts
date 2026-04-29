@@ -221,10 +221,18 @@ CRITICAL ROLE-AWARE RULES:
 
 ${roleFocus}
 
-${isCodeRole ? `You have been given the actual code from the student's GitHub repository. You must:
-1. Verify the code actually exists and is not a placeholder or unrelated project. If the repo appears unrelated to the problem (famous open source project, template, or no relevant code), set repo_mismatch: true and reduce score by 30 points minimum.
-2. Cross-verify the student's written answers against the actual code. If they claim X but the code shows no evidence of X, flag inconsistency and reduce solution_quality significantly.
-3. Populate the code_review field accordingly.` : `This is NOT a code role. Leave code_review with repo_accessible=false, repo_relevant=false, repo_mismatch=false, empty arrays, and a brief note "not applicable for ${roleName}" in code_quality_observation. Do NOT fetch or expect code.`}
+${isFigma
+  ? `This is a UX Designer submission with a Figma link. You CANNOT read the Figma file. Grade ONLY the written answers. Set mentor_review_required: true always. Note in feedback that design will be reviewed by a mentor. Leave code_review fields as not applicable.`
+  : fetchedContent
+  ? `You have been given the actual content from the student's submitted work (${isGithub ? 'GitHub repository' : isGoogleDoc ? 'Google Doc' : isNotion ? 'Notion page' : 'submitted link'}). You must:
+1. Verify the content is actually relevant to the project problem and not a placeholder or someone else's work.
+2. Cross-verify their written answers against the actual submitted content. If they claim X but the document shows no evidence of X, flag this.
+3. If content appears completely unrelated to the challenge, reduce score by 25 points and explain.
+4. For code (SDE/Data roles): populate code_review fully. For document roles (PM/BA/QA/UX): set repo_accessible based on whether the doc was readable, repo_relevant based on content relevance, code_quality_observation to describe doc quality.`
+  : hasLink
+  ? `A submission link was provided but could not be fetched. Reason: ${fetchNote}. Grade based on written answers only. Note in feedback that the submission link could not be verified and the student should check their sharing settings. Reduce score by 15 points for unverifiable submission.`
+  : `No submission link was provided. Grade based on written answers only. Note this in feedback.`
+}
 
 Also analyse the student's written answers for signs of AI generation:
 - Overly structured language with perfect transitions
