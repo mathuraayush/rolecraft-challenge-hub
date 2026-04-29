@@ -20,7 +20,7 @@ const ROLE_GRADING_FOCUS: Record<string, string> = {
     "Grade on: test coverage breadth, edge case thinking, bug report clarity, risk identification, and traceability to acceptance criteria. Do NOT expect feature code implementations.",
 };
 
-const CODE_ROLES = new Set(["Software Engineer"]);
+const CODE_ROLES = new Set(["Software Engineer", "Data Analyst"]);
 
 async function fetchGithubRepo(url: string): Promise<{ repoContent: string; note: string; filesReviewed: string[]; accessible: boolean }> {
   const match = url.match(/github\.com\/([^\/]+)\/([^\/\?#]+)/);
