@@ -333,13 +333,66 @@ function ProjectPage() {
             </div>
           )}
 
-          {sub.ai_meta?.mentor_review_required && (
-            <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 p-3 text-sm text-accent-foreground">
-              Authenticity flag: answers show patterns consistent with AI generation. Mentor review recommended.
+          <div className="prose prose-sm mt-4 max-w-none text-stone-800 leading-relaxed feedback-prose">
+            <ReactMarkdown>{sub.ai_feedback}</ReactMarkdown>
+          </div>
+
+          {sub.ai_meta?.mentor_review_required && (sub.ai_score ?? 0) > 0 && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="font-medium text-amber-800">⭐ Flagged for Mentor Review</p>
+              <p className="mt-1 text-sm text-amber-700">
+                {sub.submission_type === "figma" || sub.submission_type === "pdf_design"
+                  ? "Your design file has been sent to our UX mentor queue. An industry expert will review your actual design and add their feedback within 3-5 days."
+                  : "Your submission scored above our mentor threshold. An industry expert will review your work within 3-5 days and their feedback will appear here."}
+              </p>
             </div>
           )}
 
-          <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">{sub.ai_feedback}</pre>
+          {codeScores && (roleName === "Software Engineer" || roleName === "Data Analyst") && (
+            <div className="mt-4 rounded-lg border border-stone-200 bg-stone-50 p-4">
+              <p className="mb-3 font-medium text-stone-800">Code Review Breakdown</p>
+              {[
+                { label: "Problem Relevance", value: codeScores.problem_relevance },
+                { label: "Implementation Completeness", value: codeScores.implementation_completeness },
+                { label: "Code Quality", value: codeScores.code_quality },
+                { label: "Answers Match Code", value: codeScores.answers_match_code },
+              ].map((c) => (
+                <div key={c.label} className="mb-3">
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-stone-600">{c.label}</span>
+                    <span className="font-medium text-stone-800">{c.value}/25</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-stone-200">
+                    <div
+                      className="h-2 rounded-full transition-all"
+                      style={{
+                        width: `${(c.value / 25) * 100}%`,
+                        backgroundColor: c.value >= 20 ? "#16A34A" : c.value >= 12 ? "#D97706" : "#DC2626",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {codeScores.penalties_applied && codeScores.penalties_applied.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-2 text-xs text-stone-500">Penalties applied:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {codeScores.penalties_applied.map((penalty) => (
+                      <span key={penalty} className="rounded-full border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
+                        {penalty}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-3 flex justify-between border-t border-stone-200 pt-3">
+                <span className="text-sm text-stone-600">Code Total</span>
+                <span className="font-semibold text-stone-800">{codeScores.code_total}/100</span>
+              </div>
+            </div>
+          )}
         </article>
       )}
 
