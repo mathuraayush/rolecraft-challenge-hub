@@ -53,6 +53,14 @@ interface AiMeta {
     authenticity_score: number;
   };
   mentor_review_required?: boolean;
+  code_criteria_scores?: {
+    problem_relevance: number;
+    implementation_completeness: number;
+    code_quality: number;
+    answers_match_code: number;
+    penalties_applied?: string[];
+    code_total: number;
+  };
 }
 
 export const Route = createFileRoute("/projects/$id")({
