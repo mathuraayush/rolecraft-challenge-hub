@@ -419,6 +419,27 @@ function ProjectPage() {
 
       {isOwner && (
         <article className="mt-6 rounded-3xl border border-border bg-card p-8">
+          {sub?.rejection_reason && sub.status === "draft" && (
+            <div
+              className="mb-6"
+              style={{
+                background: "#FEF2F2",
+                border: "1px solid #FECACA",
+                borderRadius: 8,
+                padding: 16,
+              }}
+            >
+              <div style={{ color: "#DC2626", fontWeight: 600, fontSize: 16 }}>
+                Submission Not Accepted
+              </div>
+              <div className="prose prose-sm mt-2 max-w-none text-stone-800 leading-relaxed feedback-prose">
+                <ReactMarkdown>{sub.rejection_reason}</ReactMarkdown>
+              </div>
+              <p className="mt-3 text-sm" style={{ color: "#991B1B" }}>
+                Your previous submission was not accepted. Review the feedback above, update your answers, and resubmit.
+              </p>
+            </div>
+          )}
           <h2 className="font-display text-2xl font-semibold">Your submission</h2>
           <p className="mt-2 text-sm text-muted-foreground">Walk through your thinking. The AI reviewer will read every section.</p>
 
