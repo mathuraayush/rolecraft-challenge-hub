@@ -34,6 +34,7 @@ interface Submission {
   ai_score: number | null;
   ai_feedback: string | null;
   ai_meta: AiMeta | null;
+  rejection_reason: string | null;
 }
 
 interface AiMeta {
@@ -193,20 +194,40 @@ function ProjectPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const { code_review, authenticity, mentor_review_required, code_criteria_scores, score, feedback } = data;
-      const { data: graded, error: uErr } = await supabase
-        .from("submissions")
-        .update({
-          status: "graded",
-          ai_score: score,
-          ai_feedback: feedback,
-          ai_meta: { code_review, authenticity, mentor_review_required, code_criteria_scores },
-        })
-        .eq("id", submitted.id)
-        .select()
-        .single();
-      if (uErr) throw uErr;
-      setSub(graded as Submission);
-      toast.success(`Graded: ${score}/100`);
+      const isRejected = score === 0;
+      if (isRejected) {
+        const { data: rejected, error: uErr } = await supabase
+          .from("submissions")
+          .update({
+            status: "draft",
+            ai_score: null,
+            ai_feedback: feedback,
+            rejection_reason: feedback,
+            ai_meta: { code_review, authenticity, mentor_review_required, code_criteria_scores },
+          })
+          .eq("id", submitted.id)
+          .select()
+          .single();
+        if (uErr) throw uErr;
+        setSub(rejected as Submission);
+        toast.error("Submission not accepted — see feedback");
+      } else {
+        const { data: graded, error: uErr } = await supabase
+          .from("submissions")
+          .update({
+            status: "graded",
+            ai_score: score,
+            ai_feedback: feedback,
+            rejection_reason: null,
+            ai_meta: { code_review, authenticity, mentor_review_required, code_criteria_scores },
+          })
+          .eq("id", submitted.id)
+          .select()
+          .single();
+        if (uErr) throw uErr;
+        setSub(graded as Submission);
+        toast.success(`Graded: ${score}/100`);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Grading failed");
     } finally {
@@ -398,6 +419,27 @@ function ProjectPage() {
 
       {isOwner && (
         <article className="mt-6 rounded-3xl border border-border bg-card p-8">
+          {sub?.rejection_reason && sub.status === "draft" && (
+            <div
+              className="mb-6"
+              style={{
+                background: "#FEF2F2",
+                border: "1px solid #FECACA",
+                borderRadius: 8,
+                padding: 16,
+              }}
+            >
+              <div style={{ color: "#DC2626", fontWeight: 600, fontSize: 16 }}>
+                Submission Not Accepted
+              </div>
+              <div className="prose prose-sm mt-2 max-w-none text-stone-800 leading-relaxed feedback-prose">
+                <ReactMarkdown>{sub.rejection_reason}</ReactMarkdown>
+              </div>
+              <p className="mt-3 text-sm" style={{ color: "#991B1B" }}>
+                Your previous submission was not accepted. Review the feedback above, update your answers, and resubmit.
+              </p>
+            </div>
+          )}
           <h2 className="font-display text-2xl font-semibold">Your submission</h2>
           <p className="mt-2 text-sm text-muted-foreground">Walk through your thinking. The AI reviewer will read every section.</p>
 
@@ -506,7 +548,7 @@ function ProjectPage() {
               {saving ? "Saving…" : "Save draft"}
             </button>
             <button onClick={submitForGrading} disabled={grading} className="rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
-              {grading ? "Submitting & grading…" : "Submit for AI grading"}
+              {grading ? "Submitting & grading…" : (sub?.rejection_reason && sub.status === "draft") ? "Resubmit →" : "Submit for AI grading →"}
             </button>
             {sub && <span className="text-xs text-muted-foreground">Status: <span className="font-medium capitalize text-foreground">{sub.status}</span></span>}
           </div>

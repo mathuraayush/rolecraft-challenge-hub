@@ -167,6 +167,7 @@ export type Database = {
           project_id: string
           proposed_solution: string | null
           reflection_text: string | null
+          rejection_reason: string | null
           status: string
           submission_link: string | null
           submission_type: string | null
@@ -186,6 +187,7 @@ export type Database = {
           project_id: string
           proposed_solution?: string | null
           reflection_text?: string | null
+          rejection_reason?: string | null
           status?: string
           submission_link?: string | null
           submission_type?: string | null
@@ -205,6 +207,7 @@ export type Database = {
           project_id?: string
           proposed_solution?: string | null
           reflection_text?: string | null
+          rejection_reason?: string | null
           status?: string
           submission_link?: string | null
           submission_type?: string | null
