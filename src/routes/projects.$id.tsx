@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
@@ -52,6 +53,14 @@ interface AiMeta {
     authenticity_score: number;
   };
   mentor_review_required?: boolean;
+  code_criteria_scores?: {
+    problem_relevance: number;
+    implementation_completeness: number;
+    code_quality: number;
+    answers_match_code: number;
+    penalties_applied?: string[];
+    code_total: number;
+  };
 }
 
 export const Route = createFileRoute("/projects/$id")({
@@ -77,6 +86,11 @@ function ProjectPage() {
   const [link, setLink] = useState("");
   const [linkType, setLinkType] = useState("github");
   const [approach, setApproach] = useState("");
+  const [uxTab, setUxTab] = useState<"figma" | "pdf">("figma");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -103,6 +117,13 @@ function ProjectPage() {
         setLink(s.submission_link || "");
         setLinkType(s.submission_type || "github");
         setApproach(s.approach_text || "");
+        if (s.submission_type === "pdf_design") {
+          setUxTab("pdf");
+          if (s.submission_link) {
+            const fname = s.submission_link.split("/").pop() || "design.pdf";
+            setUploadedFileName(decodeURIComponent(fname));
+          }
+        }
       }
     })();
   }, [id, user, navigate]);
@@ -171,14 +192,14 @@ function ProjectPage() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const { code_review, authenticity, mentor_review_required, score, feedback } = data;
+      const { code_review, authenticity, mentor_review_required, code_criteria_scores, score, feedback } = data;
       const { data: graded, error: uErr } = await supabase
         .from("submissions")
         .update({
           status: "graded",
           ai_score: score,
           ai_feedback: feedback,
-          ai_meta: { code_review, authenticity, mentor_review_required },
+          ai_meta: { code_review, authenticity, mentor_review_required, code_criteria_scores },
         })
         .eq("id", submitted.id)
         .select()
@@ -192,6 +213,38 @@ function ProjectPage() {
       setGrading(false);
     }
   };
+
+  const handlePdfUpload = async (file: File) => {
+    if (!user) return;
+    if (file.type !== "application/pdf") { toast.error("Only PDF files are allowed"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("PDF must be 10MB or less"); return; }
+    setUploading(true);
+    setUploadProgress(10);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${user.id}/${project.id}-${Date.now()}-${safeName}`;
+      setUploadProgress(40);
+      const { error: upErr } = await supabase.storage.from("submissions").upload(path, file, {
+        cacheControl: "3600", upsert: true, contentType: "application/pdf",
+      });
+      if (upErr) throw upErr;
+      setUploadProgress(80);
+      const { data: pub } = supabase.storage.from("submissions").getPublicUrl(path);
+      setLink(pub.publicUrl);
+      setLinkType("pdf_design");
+      setUploadedFileName(file.name);
+      setUploadProgress(100);
+      toast.success("PDF uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      setTimeout(() => setUploadProgress(0), 1200);
+    }
+  };
+
+  const isUxDesigner = roleName === "UX Designer";
+  const codeScores = sub?.ai_meta?.code_criteria_scores;
 
   return (
     <AppShell>
@@ -280,13 +333,66 @@ function ProjectPage() {
             </div>
           )}
 
-          {sub.ai_meta?.mentor_review_required && (
-            <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 p-3 text-sm text-accent-foreground">
-              Authenticity flag: answers show patterns consistent with AI generation. Mentor review recommended.
+          <div className="prose prose-sm mt-4 max-w-none text-stone-800 leading-relaxed feedback-prose">
+            <ReactMarkdown>{sub.ai_feedback}</ReactMarkdown>
+          </div>
+
+          {sub.ai_meta?.mentor_review_required && (sub.ai_score ?? 0) > 0 && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <p className="font-medium text-amber-800">⭐ Flagged for Mentor Review</p>
+              <p className="mt-1 text-sm text-amber-700">
+                {sub.submission_type === "figma" || sub.submission_type === "pdf_design"
+                  ? "Your design file has been sent to our UX mentor queue. An industry expert will review your actual design and add their feedback within 3-5 days."
+                  : "Your submission scored above our mentor threshold. An industry expert will review your work within 3-5 days and their feedback will appear here."}
+              </p>
             </div>
           )}
 
-          <pre className="mt-4 whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">{sub.ai_feedback}</pre>
+          {codeScores && (roleName === "Software Engineer" || roleName === "Data Analyst") && (
+            <div className="mt-4 rounded-lg border border-stone-200 bg-stone-50 p-4">
+              <p className="mb-3 font-medium text-stone-800">Code Review Breakdown</p>
+              {[
+                { label: "Problem Relevance", value: codeScores.problem_relevance },
+                { label: "Implementation Completeness", value: codeScores.implementation_completeness },
+                { label: "Code Quality", value: codeScores.code_quality },
+                { label: "Answers Match Code", value: codeScores.answers_match_code },
+              ].map((c) => (
+                <div key={c.label} className="mb-3">
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-stone-600">{c.label}</span>
+                    <span className="font-medium text-stone-800">{c.value}/25</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-stone-200">
+                    <div
+                      className="h-2 rounded-full transition-all"
+                      style={{
+                        width: `${(c.value / 25) * 100}%`,
+                        backgroundColor: c.value >= 20 ? "#16A34A" : c.value >= 12 ? "#D97706" : "#DC2626",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {codeScores.penalties_applied && codeScores.penalties_applied.length > 0 && (
+                <div className="mt-3">
+                  <p className="mb-2 text-xs text-stone-500">Penalties applied:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {codeScores.penalties_applied.map((penalty) => (
+                      <span key={penalty} className="rounded-full border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
+                        {penalty}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-3 flex justify-between border-t border-stone-200 pt-3">
+                <span className="text-sm text-stone-600">Code Total</span>
+                <span className="font-semibold text-stone-800">{codeScores.code_total}/100</span>
+              </div>
+            </div>
+          )}
         </article>
       )}
 
@@ -303,31 +409,96 @@ function ProjectPage() {
             <Textarea label="Reflection" value={reflection} onChange={setRefl} placeholder="What would you do differently with more time?" />
             <Textarea label="Approach overview (optional)" value={approach} onChange={setApproach} placeholder="A short summary of your overall approach for the portfolio." rows={3} />
 
-            <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+            {isUxDesigner ? (
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Submission link</label>
-                <input
-                  value={link}
-                  onChange={(e) => setLink(e.target.value)}
-                  placeholder="https://github.com/you/project or a doc link"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-                />
+                <div className="flex gap-1 rounded-xl border border-border bg-background p-1 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => { setUxTab("figma"); setLinkType("figma"); }}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${uxTab === "figma" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Figma Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setUxTab("pdf"); setLinkType("pdf_design"); }}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${uxTab === "pdf" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Upload PDF Export
+                  </button>
+                </div>
+
+                {uxTab === "figma" ? (
+                  <div className="mt-4">
+                    <label className="text-xs font-medium text-muted-foreground">Figma URL</label>
+                    <input
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      placeholder="https://figma.com/file/..."
+                      className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <p className="mt-1.5 text-xs text-muted-foreground">Paste your Figma file or prototype URL</p>
+                    <p className="mt-2 text-xs text-amber-700">
+                      Note: Since AI cannot read Figma directly, ensure your written answers thoroughly describe your design decisions and user flow.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <label className="text-xs font-medium text-muted-foreground">Upload your design as PDF</label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handlePdfUpload(f);
+                      }}
+                      className="mt-1 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:opacity-90"
+                    />
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      In Figma: File → Export → PDF. Include all key screens and the user flow.
+                    </p>
+                    {uploading && (
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                        <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
+                      </div>
+                    )}
+                    {!uploading && uploadedFileName && link && linkType === "pdf_design" && (
+                      <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                        <span>✓</span>
+                        <span className="font-medium">{uploadedFileName}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Type</label>
-                <select
-                  value={linkType}
-                  onChange={(e) => setLinkType(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="github">GitHub</option>
-                  <option value="gdoc">Google Doc</option>
-                  <option value="notion">Notion</option>
-                  <option value="figma">Figma</option>
-                  <option value="other">Other</option>
-                </select>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Submission link</label>
+                  <input
+                    value={link}
+                    onChange={(e) => setLink(e.target.value)}
+                    placeholder="https://github.com/you/project or a doc link"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Type</label>
+                  <select
+                    value={linkType}
+                    onChange={(e) => setLinkType(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="github">GitHub</option>
+                    <option value="gdoc">Google Doc</option>
+                    <option value="notion">Notion</option>
+                    <option value="figma">Figma</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
