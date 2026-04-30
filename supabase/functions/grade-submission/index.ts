@@ -143,6 +143,40 @@ async function fetchGenericUrl(url: string): Promise<{ content: string; note: st
   }
 }
 
+async function fetchPDFAsBase64(
+  url: string
+): Promise<{ base64: string; note: string; accessible: boolean }> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      return { base64: "", note: "PDF could not be fetched.", accessible: false };
+    }
+    const buffer = await res.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    const base64 = btoa(binary);
+    return { base64, note: "", accessible: true };
+  } catch (e) {
+    return {
+      base64: "",
+      note: `PDF fetch error: ${e instanceof Error ? e.message : "unknown"}`,
+      accessible: false
+    };
+  }
+}
+
+function countWords(submission: any): number {
+  const text = [
+    submission.problem_understanding,
+    submission.proposed_solution,
+    submission.tradeoffs,
+    submission.success_metrics,
+    submission.reflection_text
+  ].filter(Boolean).join(' ');
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
