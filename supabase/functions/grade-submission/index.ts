@@ -198,6 +198,10 @@ serve(async (req) => {
     const isNotion = /notion\.so\//i.test(link);
     const isFigma = /figma\.com\//i.test(link);
     const hasLink = !!link && link.trim().length > 0;
+    const isPDFDesign =
+      submission.submission_type === 'pdf_design' ||
+      (link.endsWith('.pdf') && roleName === 'UX Designer');
+    let pdfBase64 = "";
     let fetchedContent = "";
     let fetchNote = "";
     let fetchAccessible = false;
