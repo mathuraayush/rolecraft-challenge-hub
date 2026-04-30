@@ -143,6 +143,40 @@ async function fetchGenericUrl(url: string): Promise<{ content: string; note: st
   }
 }
 
+async function fetchPDFAsBase64(
+  url: string
+): Promise<{ base64: string; note: string; accessible: boolean }> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      return { base64: "", note: "PDF could not be fetched.", accessible: false };
+    }
+    const buffer = await res.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    const base64 = btoa(binary);
+    return { base64, note: "", accessible: true };
+  } catch (e) {
+    return {
+      base64: "",
+      note: `PDF fetch error: ${e instanceof Error ? e.message : "unknown"}`,
+      accessible: false
+    };
+  }
+}
+
+function countWords(submission: any): number {
+  const text = [
+    submission.problem_understanding,
+    submission.proposed_solution,
+    submission.tradeoffs,
+    submission.success_metrics,
+    submission.reflection_text
+  ].filter(Boolean).join(' ');
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -164,6 +198,10 @@ serve(async (req) => {
     const isNotion = /notion\.so\//i.test(link);
     const isFigma = /figma\.com\//i.test(link);
     const hasLink = !!link && link.trim().length > 0;
+    const isPDFDesign =
+      submission.submission_type === 'pdf_design' ||
+      (link.endsWith('.pdf') && roleName === 'UX Designer');
+    let pdfBase64 = "";
     let fetchedContent = "";
     let fetchNote = "";
     let fetchAccessible = false;
@@ -206,6 +244,16 @@ serve(async (req) => {
       repoSection = r.content
         ? `\n\nCONTENT FROM SUBMITTED LINK:\n${r.content}`
         : `\n\nLINK ACCESS NOTE: ${r.note}`;
+    }
+
+    if (isPDFDesign && hasLink) {
+      const r = await fetchPDFAsBase64(link);
+      pdfBase64 = r.base64;
+      fetchNote = r.note;
+      fetchAccessible = r.accessible;
+      if (!r.accessible) {
+        repoSection = `\n\nPDF ACCESS NOTE: ${r.note}`;
+      }
     }
 
     const roleFocus = ROLE_GRADING_FOCUS[roleName] || "Grade them only on what this role is expected to produce.";
