@@ -21,6 +21,7 @@ interface Submission {
   project_id: string;
   status: string;
   ai_score: number | null;
+  ai_feedback: string | null;
 }
 
 interface UserRow {
