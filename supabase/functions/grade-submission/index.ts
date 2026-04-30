@@ -339,7 +339,43 @@ Aim for at least 400 words across all fields. Your Figma link is saved. Expand y
 
     const roleFocus = ROLE_GRADING_FOCUS[roleName] || "Grade them only on what this role is expected to produce.";
 
-    const systemPrompt = `You are grading a ${roleName} submission at ${level || "unspecified"} level.
+    const systemPrompt = `STEP 1 — AUTHENTICITY CHECK (run this before grading):
+
+Analyse all written fields for AI generation signals:
+- Perfect structure with no hesitation or gaps
+- Buzzwords with no specific examples: leverage, streamline, robust, user-centered, seamless, cutting-edge, holistic
+- Covers every point too completely for someone learning
+- No personal uncertainty or gaps in knowledge
+- No specific details tied to THIS exact problem
+- Reflection reads like a conclusion, not genuine thought
+- Generic phrases that could apply to ANY project
+
+IF likely_ai_generated is true AND confidence is medium or high:
+STOP. Do not grade normally. Return:
+- score: 0
+- feedback: exactly this message with [placeholders] filled in:
+'## Submission Rejected — AI Generated Content Detected
+
+Your submission has been flagged as AI-generated ([confidence level] confidence).
+
+RoleCraft evaluates genuine thinking. AI-generated answers defeat the purpose of building a real portfolio — companies will see through it immediately in interviews.
+
+**Why your submission was flagged:**
+
+[specific phrases or patterns from their actual submission that triggered the flag — be precise]
+
+**What genuine answers look like:**
+
+- Personal uncertainty: I was not sure whether to...
+- Specific details: In this problem the constraint of X made me think...
+- Your actual reasoning process, not a polished output
+- It is okay to be wrong or incomplete — that is human
+
+Your draft is saved. Rewrite in your own words and resubmit.'
+- mentor_review_required: false
+- authenticity_score: below 30
+
+You are grading a ${roleName} submission at ${level || "unspecified"} level.
 
 CRITICAL ROLE-AWARE RULES:
 - Do NOT penalise a Product Manager for not writing code.
@@ -349,6 +385,34 @@ CRITICAL ROLE-AWARE RULES:
 - Grade them ONLY on what a ${roleName} is expected to produce.
 
 ${roleFocus}
+
+SCORING RULES — follow exactly:
+
+90-100: Exceptional. Hire-ready. Specific insights, strong rationale, all deliverables fully addressed, evidence of deep independent thinking.
+75-89: Good. Solid thinking, most deliverables covered, genuine effort clear, minor gaps only.
+60-74: Average. Basic understanding shown, surface-level analysis, some deliverables missing or weak.
+40-59: Below average. Significant gaps, vague answers, multiple deliverables missing, generic reasoning.
+20-39: Poor. Minimal effort, off-topic, deliverables largely ignored.
+0: Rejected (AI detected, no link, insufficient content)
+
+MANDATORY PENALTIES — apply these before finalising score:
+- Submission link inaccessible (private/broken): -15
+- Figma submitted but no written user flow: -10
+- Total written words under 200: -20
+- Each missing deliverable from the challenge: -8
+- Generic language with no problem-specific details: -15
+- Answers could apply to ANY project not this one: -20
+- No README in GitHub repo: -5
+- Repo is fork of famous project with no changes: -25
+
+SCORE CAPS by situation:
+- Figma link only, no textual flow description: max 60
+- Inaccessible link + weak written answers: max 45
+- Strong written answers + verified proof of work: no cap
+
+LEVEL ADJUSTMENT:
+- Beginner: add up to 10 grace points for genuine effort
+- Advanced: if score below 70, explicitly note this is below the expected bar for their declared level
 
 ${isFigma
   ? `This is a UX Designer submission with a Figma link. You CANNOT read the Figma file. Grade ONLY the written answers. Set mentor_review_required: true always. Note in feedback that design will be reviewed by a mentor. Leave code_review fields as not applicable.`
@@ -362,6 +426,51 @@ ${isFigma
   ? `A submission link was provided but could not be fetched. Reason: ${fetchNote}. Grade based on written answers only. Note in feedback that the submission link could not be verified and the student should check their sharing settings. Reduce score by 15 points for unverifiable submission.`
   : `No submission link was provided. Grade based on written answers only. Note this in feedback.`
 }
+
+${isCodeRole ? `Grade the code on these 4 criteria, 25 points each:
+
+CRITERION 1 — Problem Relevance (0-25):
+25: Code directly solves the stated problem. Functions and logic clearly relate to the domain.
+15: Partially relevant, missing key solution parts.
+5:  Generic boilerplate or tutorial code.
+0:  Famous repo, completely unrelated, inaccessible.
+
+CRITERION 2 — Implementation Completeness (0-25):
+25: All deliverables have corresponding code. README explains the approach.
+15: Most deliverables implemented, some missing.
+5:  Skeleton only, not functional.
+0:  Empty repo, config files only.
+
+CRITERION 3 — Code Quality (0-25):
+25: Meaningful names, focused functions, error handling, consistent style, no obvious bugs.
+15: Mostly readable, basic error handling.
+5:  Hard to read, no error handling, copy-paste patterns.
+0:  Unreadable, no structure.
+
+CRITERION 4 — Answers Match Code (0-25):
+25: Written approach matches code exactly.
+15: Minor inconsistencies.
+5:  Significant mismatch between description and code.
+0:  Complete mismatch — described X, built Y.
+
+code_total = sum of 4 criteria
+Apply penalties from MANDATORY PENALTIES above.
+
+Overall score weighting for code roles:
+Written answers: 40%
+Code score: 60%
+
+Add code_criteria_scores to your response:
+{
+  problem_relevance: 0-25,
+  implementation_completeness: 0-25,
+  code_quality: 0-25,
+  answers_match_code: 0-25,
+  penalties_applied: [],
+  code_total: 0-100
+}` : `For document roles (PM, BA, QA):
+Written answers: 60%
+Document quality from fetched content: 40%`}
 
 Also analyse the student's written answers for signs of AI generation:
 - Overly structured language with perfect transitions
