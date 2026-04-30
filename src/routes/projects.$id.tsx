@@ -117,6 +117,13 @@ function ProjectPage() {
         setLink(s.submission_link || "");
         setLinkType(s.submission_type || "github");
         setApproach(s.approach_text || "");
+        if (s.submission_type === "pdf_design") {
+          setUxTab("pdf");
+          if (s.submission_link) {
+            const fname = s.submission_link.split("/").pop() || "design.pdf";
+            setUploadedFileName(decodeURIComponent(fname));
+          }
+        }
       }
     })();
   }, [id, user, navigate]);
