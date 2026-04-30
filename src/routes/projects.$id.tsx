@@ -409,31 +409,96 @@ function ProjectPage() {
             <Textarea label="Reflection" value={reflection} onChange={setRefl} placeholder="What would you do differently with more time?" />
             <Textarea label="Approach overview (optional)" value={approach} onChange={setApproach} placeholder="A short summary of your overall approach for the portfolio." rows={3} />
 
-            <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+            {isUxDesigner ? (
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Submission link</label>
-                <input
-                  value={link}
-                  onChange={(e) => setLink(e.target.value)}
-                  placeholder="https://github.com/you/project or a doc link"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-                />
+                <div className="flex gap-1 rounded-xl border border-border bg-background p-1 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => { setUxTab("figma"); setLinkType("figma"); }}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${uxTab === "figma" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Figma Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setUxTab("pdf"); setLinkType("pdf_design"); }}
+                    className={`rounded-lg px-4 py-2 text-sm font-medium transition ${uxTab === "pdf" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Upload PDF Export
+                  </button>
+                </div>
+
+                {uxTab === "figma" ? (
+                  <div className="mt-4">
+                    <label className="text-xs font-medium text-muted-foreground">Figma URL</label>
+                    <input
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      placeholder="https://figma.com/file/..."
+                      className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                    />
+                    <p className="mt-1.5 text-xs text-muted-foreground">Paste your Figma file or prototype URL</p>
+                    <p className="mt-2 text-xs text-amber-700">
+                      Note: Since AI cannot read Figma directly, ensure your written answers thoroughly describe your design decisions and user flow.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <label className="text-xs font-medium text-muted-foreground">Upload your design as PDF</label>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handlePdfUpload(f);
+                      }}
+                      className="mt-1 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:opacity-90"
+                    />
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      In Figma: File → Export → PDF. Include all key screens and the user flow.
+                    </p>
+                    {uploading && (
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                        <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${uploadProgress}%` }} />
+                      </div>
+                    )}
+                    {!uploading && uploadedFileName && link && linkType === "pdf_design" && (
+                      <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                        <span>✓</span>
+                        <span className="font-medium">{uploadedFileName}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Type</label>
-                <select
-                  value={linkType}
-                  onChange={(e) => setLinkType(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-                >
-                  <option value="github">GitHub</option>
-                  <option value="gdoc">Google Doc</option>
-                  <option value="notion">Notion</option>
-                  <option value="figma">Figma</option>
-                  <option value="other">Other</option>
-                </select>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Submission link</label>
+                  <input
+                    value={link}
+                    onChange={(e) => setLink(e.target.value)}
+                    placeholder="https://github.com/you/project or a doc link"
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Type</label>
+                  <select
+                    value={linkType}
+                    onChange={(e) => setLinkType(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="github">GitHub</option>
+                    <option value="gdoc">Google Doc</option>
+                    <option value="notion">Notion</option>
+                    <option value="figma">Figma</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
