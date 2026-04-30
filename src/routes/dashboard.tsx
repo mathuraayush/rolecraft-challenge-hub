@@ -169,15 +169,23 @@ function Dashboard() {
                 <div className="flex items-center gap-2 text-xs">
                   {p.domain && <span className="rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">{p.domain}</span>}
                   {p.difficulty_level && <span className={`rounded-full px-2.5 py-1 font-medium capitalize ${difficultyBadgeClass(p.difficulty_level)}`}>{p.difficulty_level}</span>}
-                  {sub?.status === "graded" && (
+                  {sub?.status === "graded" && (sub.ai_score ?? 0) > 0 && (
                     <span className="ml-auto rounded-full bg-success/15 px-2.5 py-1 font-medium text-success">
                       Graded · {sub.ai_score}/100
                     </span>
                   )}
                   {sub?.status === "submitted" && (
-                    <span className="ml-auto rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">Submitted</span>
+                    <span className="ml-auto rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">Under Review</span>
                   )}
-                  {sub?.status === "draft" && (
+                  {sub?.status === "draft" && sub.ai_feedback && /Submission (Rejected|Not Accepted)/i.test(sub.ai_feedback) && (
+                    <span
+                      className="ml-auto rounded-full px-2.5 py-1 font-medium"
+                      style={{ background: "#FEF2F2", color: "#DC2626" }}
+                    >
+                      Action Required
+                    </span>
+                  )}
+                  {sub?.status === "draft" && !(sub.ai_feedback && /Submission (Rejected|Not Accepted)/i.test(sub.ai_feedback)) && (
                     <span className="ml-auto rounded-full bg-muted px-2.5 py-1 font-medium text-muted-foreground">Draft</span>
                   )}
                 </div>
