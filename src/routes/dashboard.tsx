@@ -62,7 +62,7 @@ function Dashboard() {
     const [{ data: u }, { data: ps }, { data: subs }] = await Promise.all([
       supabase.from("users").select("name, role, level, onboarded").eq("id", user.id).maybeSingle(),
       supabase.from("projects").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("submissions").select("id, project_id, status, ai_score").eq("user_id", user.id),
+      supabase.from("submissions").select("id, project_id, status, ai_score, ai_feedback").eq("user_id", user.id),
     ]);
     if (u && !u.onboarded) {
       navigate({ to: "/onboarding" });
