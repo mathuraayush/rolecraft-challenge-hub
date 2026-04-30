@@ -256,6 +256,87 @@ serve(async (req) => {
       }
     }
 
+    const wordCount = countWords(submission);
+
+    if (!hasLink && !isFigma && roleName !== 'UX Designer') {
+      return new Response(JSON.stringify({
+        score: 0,
+        feedback: `## Submission Rejected — No Proof of Work Submitted
+
+RoleCraft is a portfolio platform. Every submission requires a link to your actual work.
+
+A written description without real work cannot be verified by companies reviewing your portfolio. Anyone can describe work they never did.
+
+**What you need to submit as a ${roleName}:**
+
+${roleName === 'Software Engineer' || roleName === 'Data Analyst'
+  ? '- A public GitHub repository with your actual code\n- README explaining your approach'
+  : roleName === 'Product Manager'
+  ? '- A Google Doc or Notion page with your PRD\n- Must be set to anyone with link can view'
+  : roleName === 'Business Analyst'
+  ? '- A Google Doc or Notion page with your BRD or process maps'
+  : '- A Google Doc or Notion page with your test plan and test cases'}
+
+Your written answers are saved as a draft. Complete your work, add the link, and resubmit.`,
+        code_review: {
+          repo_accessible: false,
+          repo_relevant: false,
+          repo_mismatch: false,
+          files_reviewed: [],
+          code_quality_observation: "No submission link provided — rejected before review.",
+          answers_match_code: false,
+          inconsistencies_found: ["No proof of work submitted"]
+        },
+        authenticity: {
+          likely_ai_generated: false,
+          confidence: "low",
+          reasoning: "Rejected before authenticity check.",
+          authenticity_score: 50
+        },
+        mentor_review_required: false
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    if (isFigma && wordCount < 150) {
+      return new Response(JSON.stringify({
+        score: 0,
+        feedback: `## Submission Rejected — Written Answers Too Brief
+
+Your Figma link has been received, but since AI cannot read Figma files, your written answers are your primary gradeable submission.
+
+Your answers currently total approximately ${wordCount} words — this is not enough for meaningful evaluation.
+
+**Your written answers must include:**
+
+- A specific list of 5-7 usability issues with severity ratings (High / Medium / Low)
+- Detailed rationale for each design decision
+- A written description of your user flow step by step — describe what happens on each screen even though it is in Figma
+- What design alternatives you considered and why you rejected them
+
+Aim for at least 400 words across all fields. Your Figma link is saved. Expand your answers and resubmit.`,
+        code_review: {
+          repo_accessible: false,
+          repo_relevant: false,
+          repo_mismatch: false,
+          files_reviewed: [],
+          code_quality_observation: "Figma submission rejected — written answers insufficient.",
+          answers_match_code: false,
+          inconsistencies_found: ["Written answers too brief for Figma submission"]
+        },
+        authenticity: {
+          likely_ai_generated: false,
+          confidence: "low",
+          reasoning: "Rejected before authenticity check.",
+          authenticity_score: 50
+        },
+        mentor_review_required: false
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
     const roleFocus = ROLE_GRADING_FOCUS[roleName] || "Grade them only on what this role is expected to produce.";
 
     const systemPrompt = `You are grading a ${roleName} submission at ${level || "unspecified"} level.
