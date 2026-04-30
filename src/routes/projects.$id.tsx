@@ -214,6 +214,38 @@ function ProjectPage() {
     }
   };
 
+  const handlePdfUpload = async (file: File) => {
+    if (!user) return;
+    if (file.type !== "application/pdf") { toast.error("Only PDF files are allowed"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error("PDF must be 10MB or less"); return; }
+    setUploading(true);
+    setUploadProgress(10);
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${user.id}/${project.id}-${Date.now()}-${safeName}`;
+      setUploadProgress(40);
+      const { error: upErr } = await supabase.storage.from("submissions").upload(path, file, {
+        cacheControl: "3600", upsert: true, contentType: "application/pdf",
+      });
+      if (upErr) throw upErr;
+      setUploadProgress(80);
+      const { data: pub } = supabase.storage.from("submissions").getPublicUrl(path);
+      setLink(pub.publicUrl);
+      setLinkType("pdf_design");
+      setUploadedFileName(file.name);
+      setUploadProgress(100);
+      toast.success("PDF uploaded");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      setTimeout(() => setUploadProgress(0), 1200);
+    }
+  };
+
+  const isUxDesigner = roleName === "UX Designer";
+  const codeScores = sub?.ai_meta?.code_criteria_scores;
+
   return (
     <AppShell>
       <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Dashboard</Link>
