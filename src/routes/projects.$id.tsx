@@ -86,6 +86,11 @@ function ProjectPage() {
   const [link, setLink] = useState("");
   const [linkType, setLinkType] = useState("github");
   const [approach, setApproach] = useState("");
+  const [uxTab, setUxTab] = useState<"figma" | "pdf">("figma");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
