@@ -548,7 +548,7 @@ function ProjectPage() {
               {saving ? "Saving…" : "Save draft"}
             </button>
             <button onClick={submitForGrading} disabled={grading} className="rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
-              {grading ? "Submitting & grading…" : "Submit for AI grading"}
+              {grading ? "Submitting & grading…" : (sub?.rejection_reason && sub.status === "draft") ? "Resubmit →" : "Submit for AI grading →"}
             </button>
             {sub && <span className="text-xs text-muted-foreground">Status: <span className="font-medium capitalize text-foreground">{sub.status}</span></span>}
           </div>
