@@ -34,6 +34,7 @@ interface Submission {
   ai_score: number | null;
   ai_feedback: string | null;
   ai_meta: AiMeta | null;
+  rejection_reason: string | null;
 }
 
 interface AiMeta {
