@@ -194,20 +194,40 @@ function ProjectPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       const { code_review, authenticity, mentor_review_required, code_criteria_scores, score, feedback } = data;
-      const { data: graded, error: uErr } = await supabase
-        .from("submissions")
-        .update({
-          status: "graded",
-          ai_score: score,
-          ai_feedback: feedback,
-          ai_meta: { code_review, authenticity, mentor_review_required, code_criteria_scores },
-        })
-        .eq("id", submitted.id)
-        .select()
-        .single();
-      if (uErr) throw uErr;
-      setSub(graded as Submission);
-      toast.success(`Graded: ${score}/100`);
+      const isRejected = score === 0;
+      if (isRejected) {
+        const { data: rejected, error: uErr } = await supabase
+          .from("submissions")
+          .update({
+            status: "draft",
+            ai_score: null,
+            ai_feedback: feedback,
+            rejection_reason: feedback,
+            ai_meta: { code_review, authenticity, mentor_review_required, code_criteria_scores },
+          })
+          .eq("id", submitted.id)
+          .select()
+          .single();
+        if (uErr) throw uErr;
+        setSub(rejected as Submission);
+        toast.error("Submission not accepted — see feedback");
+      } else {
+        const { data: graded, error: uErr } = await supabase
+          .from("submissions")
+          .update({
+            status: "graded",
+            ai_score: score,
+            ai_feedback: feedback,
+            rejection_reason: null,
+            ai_meta: { code_review, authenticity, mentor_review_required, code_criteria_scores },
+          })
+          .eq("id", submitted.id)
+          .select()
+          .single();
+        if (uErr) throw uErr;
+        setSub(graded as Submission);
+        toast.success(`Graded: ${score}/100`);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Grading failed");
     } finally {
