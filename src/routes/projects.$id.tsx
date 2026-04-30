@@ -192,14 +192,14 @@ function ProjectPage() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const { code_review, authenticity, mentor_review_required, score, feedback } = data;
+      const { code_review, authenticity, mentor_review_required, code_criteria_scores, score, feedback } = data;
       const { data: graded, error: uErr } = await supabase
         .from("submissions")
         .update({
           status: "graded",
           ai_score: score,
           ai_feedback: feedback,
-          ai_meta: { code_review, authenticity, mentor_review_required },
+          ai_meta: { code_review, authenticity, mentor_review_required, code_criteria_scores },
         })
         .eq("id", submitted.id)
         .select()
