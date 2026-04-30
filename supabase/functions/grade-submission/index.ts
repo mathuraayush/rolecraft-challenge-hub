@@ -246,6 +246,16 @@ serve(async (req) => {
         : `\n\nLINK ACCESS NOTE: ${r.note}`;
     }
 
+    if (isPDFDesign && hasLink) {
+      const r = await fetchPDFAsBase64(link);
+      pdfBase64 = r.base64;
+      fetchNote = r.note;
+      fetchAccessible = r.accessible;
+      if (!r.accessible) {
+        repoSection = `\n\nPDF ACCESS NOTE: ${r.note}`;
+      }
+    }
+
     const roleFocus = ROLE_GRADING_FOCUS[roleName] || "Grade them only on what this role is expected to produce.";
 
     const systemPrompt = `You are grading a ${roleName} submission at ${level || "unspecified"} level.
