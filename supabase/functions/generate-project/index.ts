@@ -300,6 +300,43 @@ Return your output via the create_project tool.`;
     if (!toolCall) throw new Error("No project generated");
     const raw = JSON.parse(toolCall.function.arguments);
 
+    const deliverableText = Array.isArray(raw.deliverables)
+      ? raw.deliverables.join(' ').toLowerCase()
+      : '';
+
+    const roleDeliverableCheck: Record<string, string[]> = {
+      'UX Designer': ['wireframe','user flow','figma','usability','prototype','screen design','ux'],
+      'QA Engineer': ['test case','test plan','bug report','regression','acceptance criteria','qa strategy','edge case'],
+      'Data Analyst': ['sql','query','dataset','metric','insight','analysis','python','notebook'],
+      'Product Manager': ['prd','user stor','roadmap','okr','prioriti','go-to-market','feature spec'],
+      'Business Analyst': ['brd','process map','gap analysis','as-is','to-be','stakeholder','requirements','use case'],
+      'Software Engineer': ['github','code','implement','build','api','architecture','deploy','function'],
+    };
+
+    const wrongRoleKeywords: Record<string, string[]> = {
+      'Data Analyst': ['wireframe','user flow','figma','test case','test plan','brd','process map'],
+      'QA Engineer': ['wireframe','user flow','figma','sql','query','prd','roadmap','implement','build'],
+      'UX Designer': ['sql','query','test case','test plan','brd','implement','build','github repo'],
+      'Product Manager': ['wireframe','figma','sql','query','test case','implement code','build a'],
+      'Business Analyst': ['wireframe','figma','sql','query','test case','implement','github repo'],
+      'Software Engineer': ['wireframe','figma','test case','test plan','brd','process map','user stor'],
+    };
+
+    void roleDeliverableCheck;
+    const wrongKeywords = wrongRoleKeywords[role] || [];
+    const hasWrongDeliverables = wrongKeywords.some((k) => deliverableText.includes(k));
+
+    if (hasWrongDeliverables) {
+      console.error(`Role mismatch detected for ${role}:`, deliverableText.slice(0, 200));
+      return new Response(JSON.stringify({
+        error: "ROLE_MISMATCH",
+        message: `Generated project contained wrong deliverables for ${role}. Please try again.`,
+      }), {
+        status: 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const deliverablesText = Array.isArray(raw.deliverables)
       ? raw.deliverables.map((d: string) => `- ${d}`).join("\n")
       : String(raw.deliverables || "");
