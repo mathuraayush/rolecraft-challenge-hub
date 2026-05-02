@@ -83,12 +83,32 @@ function Dashboard() {
     if (!user || !profile?.role || !profile.level) return;
     setGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-project", {
-        body: { roleName, roleSlug: profile.role, level: profile.level },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      const p = data.project;
+      let p: any = null;
+      let lastMismatch = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data, error } = await supabase.functions.invoke("generate-project", {
+          body: { roleName, roleSlug: profile.role, level: profile.level },
+        });
+        // Detect ROLE_MISMATCH (422) — supabase-js may surface as error with context, or data.error
+        const mismatch =
+          (data && (data as any).error === "ROLE_MISMATCH") ||
+          (error && typeof (error as any).message === "string" && (error as any).message.includes("ROLE_MISMATCH"));
+        if (mismatch) {
+          lastMismatch = true;
+          continue;
+        }
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        p = data.project;
+        lastMismatch = false;
+        break;
+      }
+      if (!p) {
+        if (lastMismatch) {
+          throw new Error("Having trouble generating a perfect challenge. Please try again.");
+        }
+        throw new Error("Failed to generate project");
+      }
 
       const { data: roleRow } = await supabase.from("roles").select("id").eq("slug", profile.role).maybeSingle();
       const { data: inserted, error: insErr } = await supabase.from("projects").insert({
