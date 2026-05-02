@@ -258,7 +258,7 @@ serve(async (req) => {
 
     const wordCount = countWords(submission);
 
-    if (!hasLink && !isFigma && roleName !== 'UX Designer') {
+    if (!hasLink) {
       return new Response(JSON.stringify({
         score: 0,
         feedback: `## Submission Rejected — No Proof of Work Submitted
@@ -269,13 +269,17 @@ A written description without real work cannot be verified by companies reviewin
 
 **What you need to submit as a ${roleName}:**
 
-${roleName === 'Software Engineer' || roleName === 'Data Analyst'
-  ? '- A public GitHub repository with your actual code\n- README explaining your approach'
-  : roleName === 'Product Manager'
-  ? '- A Google Doc or Notion page with your PRD\n- Must be set to anyone with link can view'
-  : roleName === 'Business Analyst'
-  ? '- A Google Doc or Notion page with your BRD or process maps'
-  : '- A Google Doc or Notion page with your test plan and test cases'}
+${
+  roleName === 'Software Engineer' || roleName === 'Data Analyst'
+    ? '- A public GitHub repository with your actual code\n- README explaining your approach'
+    : roleName === 'UX Designer'
+    ? '- A Figma file link (set to anyone with link can view)\n- OR upload a PDF export of your designs\n- Your Figma link must not be empty'
+    : roleName === 'Product Manager'
+    ? '- A Google Doc or Notion page with your PRD\n- Must be set to anyone with link can view'
+    : roleName === 'Business Analyst'
+    ? '- A Google Doc or Notion page with your BRD or process maps'
+    : '- A Google Doc or Notion page with your test plan and test cases'
+}
 
 Your written answers are saved as a draft. Complete your work, add the link, and resubmit.`,
         code_review: {
