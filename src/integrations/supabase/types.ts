@@ -91,6 +91,30 @@ export type Database = {
           },
         ]
       }
+      recruiter_contacts: {
+        Row: {
+          contacted_at: string
+          email_sent: boolean
+          id: string
+          recruiter_id: string
+          student_user_id: string
+        }
+        Insert: {
+          contacted_at?: string
+          email_sent?: boolean
+          id?: string
+          recruiter_id: string
+          student_user_id: string
+        }
+        Update: {
+          contacted_at?: string
+          email_sent?: boolean
+          id?: string
+          recruiter_id?: string
+          student_user_id?: string
+        }
+        Relationships: []
+      }
       recruiters: {
         Row: {
           company: string
@@ -99,8 +123,11 @@ export type Database = {
           email: string
           hiring_for_role: string | null
           id: string
+          is_subscribed: boolean
           name: string
           saved_searches: Json | null
+          subscribed_at: string | null
+          subscription_plan: string | null
           user_id: string | null
         }
         Insert: {
@@ -110,8 +137,11 @@ export type Database = {
           email: string
           hiring_for_role?: string | null
           id?: string
+          is_subscribed?: boolean
           name: string
           saved_searches?: Json | null
+          subscribed_at?: string | null
+          subscription_plan?: string | null
           user_id?: string | null
         }
         Update: {
@@ -121,8 +151,11 @@ export type Database = {
           email?: string
           hiring_for_role?: string | null
           id?: string
+          is_subscribed?: boolean
           name?: string
           saved_searches?: Json | null
+          subscribed_at?: string | null
+          subscription_plan?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -225,8 +258,39 @@ export type Database = {
           },
         ]
       }
+      subscription_requests: {
+        Row: {
+          hiring_count: string | null
+          id: string
+          phone: string | null
+          plan_type: string
+          recruiter_id: string
+          requested_at: string
+          status: string
+        }
+        Insert: {
+          hiring_count?: string | null
+          id?: string
+          phone?: string | null
+          plan_type: string
+          recruiter_id: string
+          requested_at?: string
+          status?: string
+        }
+        Update: {
+          hiring_count?: string | null
+          id?: string
+          phone?: string | null
+          plan_type?: string
+          recruiter_id?: string
+          requested_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
+          allow_recruiter_contact: boolean
           bio: string | null
           city: string | null
           college: string | null
@@ -241,6 +305,7 @@ export type Database = {
           role: string | null
         }
         Insert: {
+          allow_recruiter_contact?: boolean
           bio?: string | null
           city?: string | null
           college?: string | null
@@ -255,6 +320,7 @@ export type Database = {
           role?: string | null
         }
         Update: {
+          allow_recruiter_contact?: boolean
           bio?: string | null
           city?: string | null
           college?: string | null
