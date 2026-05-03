@@ -9,18 +9,38 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SubmitRouteImport } from './routes/submit'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecruitersRouteImport } from './routes/recruiters'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PortfoliosRouteImport } from './routes/portfolios'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
+import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as UIdRouteImport } from './routes/u.$id'
 import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
 
+const SubmitRoute = SubmitRouteImport.update({
+  id: '/submit',
+  path: '/submit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecruitersRoute = RecruitersRouteImport.update({
   id: '/recruiters',
   path: '/recruiters',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortfoliosRoute = PortfoliosRouteImport.update({
@@ -31,6 +51,16 @@ const PortfoliosRoute = PortfoliosRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GenerateRoute = GenerateRouteImport.update({
+  id: '/generate',
+  path: '/generate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -63,9 +93,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/generate': typeof GenerateRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/onboarding': typeof OnboardingRoute
   '/portfolios': typeof PortfoliosRoute
+  '/pricing': typeof PricingRoute
   '/recruiters': typeof RecruitersRoute
+  '/settings': typeof SettingsRoute
+  '/submit': typeof SubmitRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/u/$id': typeof UIdRoute
 }
@@ -73,9 +108,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/generate': typeof GenerateRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/onboarding': typeof OnboardingRoute
   '/portfolios': typeof PortfoliosRoute
+  '/pricing': typeof PricingRoute
   '/recruiters': typeof RecruitersRoute
+  '/settings': typeof SettingsRoute
+  '/submit': typeof SubmitRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/u/$id': typeof UIdRoute
 }
@@ -84,9 +124,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/generate': typeof GenerateRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/onboarding': typeof OnboardingRoute
   '/portfolios': typeof PortfoliosRoute
+  '/pricing': typeof PricingRoute
   '/recruiters': typeof RecruitersRoute
+  '/settings': typeof SettingsRoute
+  '/submit': typeof SubmitRoute
   '/projects/$id': typeof ProjectsIdRoute
   '/u/$id': typeof UIdRoute
 }
@@ -96,9 +141,14 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/generate'
+    | '/leaderboard'
     | '/onboarding'
     | '/portfolios'
+    | '/pricing'
     | '/recruiters'
+    | '/settings'
+    | '/submit'
     | '/projects/$id'
     | '/u/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -106,9 +156,14 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/generate'
+    | '/leaderboard'
     | '/onboarding'
     | '/portfolios'
+    | '/pricing'
     | '/recruiters'
+    | '/settings'
+    | '/submit'
     | '/projects/$id'
     | '/u/$id'
   id:
@@ -116,9 +171,14 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/generate'
+    | '/leaderboard'
     | '/onboarding'
     | '/portfolios'
+    | '/pricing'
     | '/recruiters'
+    | '/settings'
+    | '/submit'
     | '/projects/$id'
     | '/u/$id'
   fileRoutesById: FileRoutesById
@@ -127,20 +187,46 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
+  GenerateRoute: typeof GenerateRoute
+  LeaderboardRoute: typeof LeaderboardRoute
   OnboardingRoute: typeof OnboardingRoute
   PortfoliosRoute: typeof PortfoliosRoute
+  PricingRoute: typeof PricingRoute
   RecruitersRoute: typeof RecruitersRoute
+  SettingsRoute: typeof SettingsRoute
+  SubmitRoute: typeof SubmitRoute
   ProjectsIdRoute: typeof ProjectsIdRoute
   UIdRoute: typeof UIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/submit': {
+      id: '/submit'
+      path: '/submit'
+      fullPath: '/submit'
+      preLoaderRoute: typeof SubmitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recruiters': {
       id: '/recruiters'
       path: '/recruiters'
       fullPath: '/recruiters'
       preLoaderRoute: typeof RecruitersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portfolios': {
@@ -155,6 +241,20 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/generate': {
+      id: '/generate'
+      path: '/generate'
+      fullPath: '/generate'
+      preLoaderRoute: typeof GenerateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -199,9 +299,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
+  GenerateRoute: GenerateRoute,
+  LeaderboardRoute: LeaderboardRoute,
   OnboardingRoute: OnboardingRoute,
   PortfoliosRoute: PortfoliosRoute,
+  PricingRoute: PricingRoute,
   RecruitersRoute: RecruitersRoute,
+  SettingsRoute: SettingsRoute,
+  SubmitRoute: SubmitRoute,
   ProjectsIdRoute: ProjectsIdRoute,
   UIdRoute: UIdRoute,
 }

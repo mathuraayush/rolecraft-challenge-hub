@@ -36,7 +36,14 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back");
-        navigate({ to: "/dashboard" });
+        // Route by user type
+        const { data: { user: signedIn } } = await supabase.auth.getUser();
+        if (signedIn) {
+          const { data: rec } = await supabase.from("recruiters").select("id").eq("user_id", signedIn.id).maybeSingle();
+          navigate({ to: rec ? "/portfolios" : "/dashboard" });
+        } else {
+          navigate({ to: "/dashboard" });
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");
