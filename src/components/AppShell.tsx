@@ -1,42 +1,58 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
+import { useRecruiter } from "@/lib/useRecruiter";
 
 export function AppHeader() {
   const { user, signOut } = useAuth();
+  const { isRecruiter, recruiter } = useRecruiter();
   const navigate = useNavigate();
+
   return (
     <header className="border-b border-border bg-background">
       <div className="container-narrow flex items-center justify-between py-4">
-        <Link to="/" className="font-display text-xl font-semibold">RoleCraft</Link>
+        <div className="flex items-center gap-2">
+          <Link to="/" className="font-display text-xl font-semibold">RoleCraft</Link>
+          {user && isRecruiter && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-primary">Recruiter</span>
+          )}
+        </div>
         <nav className="flex items-center gap-1 text-sm">
-          {user && (
+          {user && isRecruiter && (
             <>
-              <Link to="/dashboard" className="rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground" activeProps={{ className: "rounded-lg px-3 py-2 text-foreground font-medium" }}>
-                Dashboard
-              </Link>
-              <Link to="/portfolios" className="rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground">
-                Portfolios
-              </Link>
-              <Link to="/u/$id" params={{ id: user.id }} className="rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground">
-                My portfolio
-              </Link>
-              <button
-                onClick={async () => { await signOut(); navigate({ to: "/" }); }}
-                className="ml-2 rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground"
-              >
-                Sign out
-              </button>
+              <NavLink to="/portfolios">🔍 Browse</NavLink>
+              <NavLink to="/recruiters">🔖 Saved</NavLink>
+              <NavLink to="/recruiters">👤 Account</NavLink>
+              {!recruiter?.is_subscribed && (
+                <Link to="/pricing" className="ml-1 rounded-lg bg-accent/20 px-3 py-2 text-xs font-medium text-accent-foreground hover:bg-accent/30">⭐ Upgrade</Link>
+              )}
+              <button onClick={async () => { await signOut(); navigate({ to: "/" }); }} className="ml-2 rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground">Sign out</button>
+            </>
+          )}
+          {user && !isRecruiter && (
+            <>
+              <NavLink to="/dashboard">My Projects</NavLink>
+              <NavLink to="/generate">Explore</NavLink>
+              <Link to="/u/$id" params={{ id: user.id }} className="rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground">My Portfolio</Link>
+              <NavLink to="/leaderboard">Leaderboard</NavLink>
+              <NavLink to="/settings">Settings</NavLink>
+              <button onClick={async () => { await signOut(); navigate({ to: "/" }); }} className="ml-2 rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground">Sign out</button>
             </>
           )}
           {!user && (
-            <Link to="/auth" className="rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90">
-              Sign in
-            </Link>
+            <Link to="/auth" className="rounded-xl bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90">Sign in</Link>
           )}
         </nav>
       </div>
     </header>
+  );
+}
+
+function NavLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link to={to as any} className="rounded-lg px-3 py-2 text-muted-foreground hover:text-foreground" activeProps={{ className: "rounded-lg px-3 py-2 text-foreground font-medium" }}>
+      {children}
+    </Link>
   );
 }
 
