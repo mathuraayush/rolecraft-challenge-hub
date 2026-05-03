@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useRecruiter } from "@/lib/useRecruiter";
 import { AppShell } from "@/components/AppShell";
 import { toast } from "sonner";
 
@@ -45,8 +46,10 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
   const { user, loading } = useAuth();
+  const { isRecruiter, loading: rLoading } = useRecruiter();
   const navigate = useNavigate();
   const search = Route.useSearch();
+  useEffect(() => { if (!rLoading && isRecruiter) navigate({ to: "/portfolios" }); }, [rLoading, isRecruiter, navigate]);
   const [profile, setProfile] = useState<UserRow | null>(null);
   const [roleName, setRoleName] = useState<string>("");
   const [projects, setProjects] = useState<Project[]>([]);

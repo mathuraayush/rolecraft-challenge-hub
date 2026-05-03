@@ -81,7 +81,7 @@ function PortfoliosPage() {
         .eq("status", "graded").gt("ai_score", 0).limit(2000);
 
       const byUser = new Map<string, SubAgg>();
-      (subs || []).forEach((s: any) => {
+      ((subs as any[]) || []).forEach((s: any) => {
         const cur = byUser.get(s.user_id) || { user_id: s.user_id, count: 0, avg: 0, domains: [], created_at: s.created_at };
         cur.count += 1;
         cur.avg = (cur.avg * (cur.count - 1) + (s.ai_score || 0)) / cur.count;
