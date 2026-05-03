@@ -3,6 +3,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { AppShell } from "@/components/AppShell";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import { toast } from "sonner";
 
 interface Recruiter {
@@ -12,6 +13,8 @@ interface Recruiter {
   company_size: string | null;
   hiring_for_role: string | null;
   email: string;
+  is_subscribed: boolean;
+  subscription_plan: string | null;
   saved_searches: Array<{ name: string; role?: string; level?: string; hire?: string }> | null;
 }
 
@@ -23,6 +26,7 @@ function RecruitersPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [recruiter, setRecruiter] = useState<Recruiter | null>(null);
+  const [contactedCount, setContactedCount] = useState(0);
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [companySize, setCompanySize] = useState("1-10");
@@ -32,6 +36,7 @@ function RecruitersPage() {
   const [searchName, setSearchName] = useState("");
   const [searchRole, setSearchRole] = useState("");
   const [searchLevel, setSearchLevel] = useState("");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -40,6 +45,12 @@ function RecruitersPage() {
       if (data) setRecruiter(data as unknown as Recruiter);
     });
   }, [user]);
+
+  useEffect(() => {
+    if (!recruiter?.id) return;
+    supabase.from("recruiter_contacts").select("id", { count: "exact", head: true }).eq("recruiter_id", recruiter.id)
+      .then(({ count }) => setContactedCount(count || 0));
+  }, [recruiter?.id]);
 
   if (loading) return <AppShell><div className="text-muted-foreground">Loading…</div></AppShell>;
 
@@ -67,6 +78,7 @@ function RecruitersPage() {
       if (error) throw error;
       setRecruiter(data as unknown as Recruiter);
       toast.success("Recruiter profile created");
+      navigate({ to: "/portfolios" });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed");
     } finally { setSubmitting(false); }
@@ -88,6 +100,31 @@ function RecruitersPage() {
     const updated = (recruiter.saved_searches || []).filter((_, i) => i !== idx);
     await supabase.from("recruiters").update({ saved_searches: updated }).eq("id", recruiter.id);
     setRecruiter({ ...recruiter, saved_searches: updated });
+  };
+
+  const exportCsv = async () => {
+    if (!recruiter?.id) return;
+    const { data: contacts } = await supabase.from("recruiter_contacts")
+      .select("contacted_at, student_user_id").eq("recruiter_id", recruiter.id);
+    if (!contacts || contacts.length === 0) { toast.message("No contacts to export"); return; }
+    const ids = contacts.map((c: any) => c.student_user_id);
+    const { data: students } = await supabase.from("users").select("id, name, email, college, role").in("id", ids);
+    const { data: subs } = await supabase.from("submissions").select("user_id, ai_score").eq("status", "graded").gt("ai_score", 0).in("user_id", ids);
+    const scoreBy = new Map<string, number[]>();
+    (subs || []).forEach((s: any) => {
+      const arr = scoreBy.get(s.user_id) || []; arr.push(s.ai_score); scoreBy.set(s.user_id, arr);
+    });
+    const rows = (students || []).map((s: any) => {
+      const scores = scoreBy.get(s.id) || [];
+      const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+      return [s.name || "", s.email || "", s.college || "", s.role || "", avg];
+    });
+    const csv = ["Name,Email,College,Role,Portfolio Score", ...rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `candidates_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (!recruiter) {
@@ -129,8 +166,36 @@ function RecruitersPage() {
 
   return (
     <AppShell>
-      <h1 className="font-display text-4xl font-semibold">Welcome, {recruiter.name}</h1>
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 className="font-display text-4xl font-semibold">Welcome, {recruiter.name}</h1>
+        {recruiter.is_subscribed && (
+          <span className="rounded-full bg-success/15 px-3 py-1 text-xs font-medium text-success">
+            ● Active Subscription{recruiter.subscription_plan ? ` · ${recruiter.subscription_plan}` : ""}
+          </span>
+        )}
+      </div>
       <p className="mt-2 text-muted-foreground">{recruiter.company} · hiring for <span className="capitalize">{recruiter.hiring_for_role?.replace("-", " ")}</span></p>
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="text-sm text-muted-foreground">Candidates Contacted</div>
+          <div className="mt-1 font-display text-3xl font-semibold">{contactedCount}</div>
+        </div>
+        {recruiter.is_subscribed ? (
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="text-sm text-muted-foreground">Export</div>
+            <button onClick={exportCsv} className="mt-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+              Export Shortlist as CSV
+            </button>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-accent/40 bg-accent/10 p-5">
+            <div className="font-medium">Unlock full access</div>
+            <p className="mt-1 text-sm text-muted-foreground">View complete portfolios and contact candidates directly.</p>
+            <Link to="/pricing" className="mt-3 inline-block text-sm font-medium text-primary hover:underline">See pricing →</Link>
+          </div>
+        )}
+      </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="rounded-3xl border border-border bg-card p-6">
@@ -146,9 +211,7 @@ function RecruitersPage() {
                     className="text-left hover:text-primary"
                   >
                     <div className="font-medium">{s.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {s.role || "any role"} · {s.level || "any level"}
-                    </div>
+                    <div className="text-xs text-muted-foreground">{s.role || "any role"} · {s.level || "any level"}</div>
                   </button>
                   <button onClick={() => removeSearch(i)} className="text-xs text-muted-foreground hover:text-destructive">Remove</button>
                 </li>
@@ -189,11 +252,18 @@ function RecruitersPage() {
         </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 flex gap-3">
         <Link to="/portfolios" className="rounded-xl bg-foreground px-5 py-3 text-sm font-medium text-background hover:opacity-90">
           Browse all portfolios →
         </Link>
+        {!recruiter.is_subscribed && (
+          <button onClick={() => setUpgradeOpen(true)} className="rounded-xl border border-border bg-accent/20 px-5 py-3 text-sm font-medium text-accent-foreground hover:bg-accent/30">
+            ⭐ Upgrade
+          </button>
+        )}
       </div>
+
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
     </AppShell>
   );
 }
@@ -202,13 +272,7 @@ function Field({ label, value, onChange, required, placeholder }: { label: strin
   return (
     <div>
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        placeholder={placeholder}
-        className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40"
-      />
+      <input value={value} onChange={(e) => onChange(e.target.value)} required={required} placeholder={placeholder} className="mt-1 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/40" />
     </div>
   );
 }
