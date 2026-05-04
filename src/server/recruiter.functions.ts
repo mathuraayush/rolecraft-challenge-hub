@@ -121,53 +121,84 @@ export const requestSubscription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => subSchema.parse(d))
   .handler(async ({ data, context }) => {
-    const { userId } = context;
-    const { data: recruiter } = await supabaseAdmin
-      .from("recruiters")
-      .select("id, user_id, name, company, email")
-      .eq("id", data.recruiter_id)
-      .maybeSingle();
-    if (!recruiter || recruiter.user_id !== userId) {
-      return { status: 403, error: "Forbidden" };
-    }
-
-    await supabaseAdmin.from("subscription_requests").insert({
-      recruiter_id: data.recruiter_id,
-      plan_type: data.plan_type,
-      phone: data.phone,
-      hiring_count: data.hiring_count,
-      status: "pending",
-    });
-
-    const RESEND_API_KEY = process.env.RESEND_API_KEY;
-    const ADMIN = process.env.ADMIN_NOTIFICATION_EMAIL;
-    if (RESEND_API_KEY && ADMIN) {
-      const html = `
-        <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;">
-          <h2>New ${data.plan_type} request from ${recruiter.name} at ${recruiter.company}</h2>
-          <p><strong>Phone:</strong> ${data.phone}</p>
-          <p><strong>Hiring count:</strong> ${data.hiring_count}</p>
-          <p><strong>Email:</strong> ${recruiter.email}</p>
-        </div>
-      `;
-      try {
-        await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${RESEND_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            from: "RoleCraft <onboarding@resend.dev>",
-            to: [ADMIN],
-            subject: `New subscription request — ${recruiter.company}`,
-            html,
-          }),
-        });
-      } catch (e) {
-        console.error("Admin notify failed", e);
+    try {
+      const { userId } = context;
+      const { data: recruiter, error: recErr } = await supabaseAdmin
+        .from("recruiters")
+        .select("id, user_id, name, company, email")
+        .eq("id", data.recruiter_id)
+        .maybeSingle();
+      if (recErr) {
+        console.error("recruiter lookup failed", recErr);
+        return { status: 500, error: recErr.message };
       }
-    }
+      if (!recruiter || recruiter.user_id !== userId) {
+        return { status: 403, error: "Forbidden" };
+      }
 
-    return { status: 200, success: true };
+      const { error: insErr } = await supabaseAdmin.from("subscription_requests").insert({
+        recruiter_id: data.recruiter_id,
+        plan_type: data.plan_type,
+        phone: data.phone,
+        hiring_count: data.hiring_count,
+        status: "pending",
+      });
+      if (insErr) {
+        console.error("subscription_requests insert failed", insErr);
+        return { status: 500, error: insErr.message };
+      }
+
+      const RESEND_API_KEY = process.env.RESEND_API_KEY;
+      const ADMIN = process.env.ADMIN_NOTIFICATION_EMAIL;
+      let emailSent = false;
+      let emailError: string | null = null;
+
+      if (!RESEND_API_KEY || !ADMIN) {
+        emailError = "Email not configured";
+        console.error(emailError, { hasKey: !!RESEND_API_KEY, hasAdmin: !!ADMIN });
+      } else {
+        const html = `
+          <div style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;">
+            <h2>New ${data.plan_type} request from ${recruiter.name} at ${recruiter.company}</h2>
+            <p><strong>Phone:</strong> ${data.phone}</p>
+            <p><strong>Hiring count:</strong> ${data.hiring_count}</p>
+            <p><strong>Recruiter email:</strong> ${recruiter.email}</p>
+            <p><strong>Plan:</strong> ${data.plan_type}</p>
+          </div>
+        `;
+        try {
+          const r = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${RESEND_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              from: "RoleCraft <onboarding@resend.dev>",
+              to: [ADMIN],
+              reply_to: recruiter.email,
+              subject: `New subscription request — ${recruiter.company} (${data.plan_type})`,
+              html,
+            }),
+          });
+          if (!r.ok) {
+            const text = await r.text();
+            emailError = `Resend ${r.status}: ${text}`;
+            console.error("Admin notify failed", emailError);
+          } else {
+            emailSent = true;
+          }
+        } catch (e) {
+          emailError = e instanceof Error ? e.message : "fetch failed";
+          console.error("Admin notify exception", e);
+        }
+      }
+
+      // Request was saved — return success even if admin email had trouble,
+      // but expose status so the user knows what to expect.
+      return { status: 200, success: true, emailSent, emailError };
+    } catch (e) {
+      console.error("requestSubscription failed", e);
+      return { status: 500, error: e instanceof Error ? e.message : "Unknown error" };
+    }
   });
