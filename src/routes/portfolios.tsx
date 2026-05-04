@@ -91,8 +91,9 @@ function PortfoliosPage() {
       });
       setAggBy(byUser);
 
+      // Show all onboarded users with public portfolios; submissions are optional.
       const rows = ((u as unknown as Person[]) || []).filter((p) =>
-        p.portfolios?.is_public !== false && byUser.has(p.id)
+        p.portfolios?.is_public !== false
       );
       setPeople(rows);
       setLoading(false);
