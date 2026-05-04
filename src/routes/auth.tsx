@@ -16,34 +16,40 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const isRecruiterFlow = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("type") === "recruiter";
+
+  const routeAfterAuth = async () => {
+    const { data: { user: signedIn } } = await supabase.auth.getUser();
+    if (!signedIn) { navigate({ to: "/dashboard" }); return; }
+    if (isRecruiterFlow) { navigate({ to: "/recruiters" }); return; }
+    const { data: rec } = await supabase.from("recruiters").select("id").eq("user_id", signedIn.id).maybeSingle();
+    if (rec) { navigate({ to: "/portfolios" }); return; }
+    const { data: u } = await supabase.from("users").select("onboarded").eq("id", signedIn.id).maybeSingle();
+    navigate({ to: u?.onboarded ? "/dashboard" : "/onboarding" });
+  };
+
   const handleEmail = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       if (mode === "signup") {
+        const redirectPath = isRecruiterFlow ? "/recruiters" : "/onboarding";
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/onboarding`,
+            emailRedirectTo: `${window.location.origin}${redirectPath}`,
             data: { name },
           },
         });
         if (error) throw error;
-        toast.success("Account created — let's set up your profile");
-        navigate({ to: "/onboarding" });
+        toast.success("Account created");
+        await routeAfterAuth();
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back");
-        // Route by user type
-        const { data: { user: signedIn } } = await supabase.auth.getUser();
-        if (signedIn) {
-          const { data: rec } = await supabase.from("recruiters").select("id").eq("user_id", signedIn.id).maybeSingle();
-          navigate({ to: rec ? "/portfolios" : "/dashboard" });
-        } else {
-          navigate({ to: "/dashboard" });
-        }
+        await routeAfterAuth();
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Authentication failed");
@@ -54,12 +60,13 @@ function AuthPage() {
 
   const handleGoogle = async () => {
     try {
+      const redirectPath = isRecruiterFlow ? "/recruiters" : "/onboarding";
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/onboarding`,
+        redirect_uri: `${window.location.origin}${redirectPath}`,
       });
       if (result.error) throw result.error;
       if (result.redirected) return;
-      navigate({ to: "/onboarding" });
+      await routeAfterAuth();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Google sign-in failed");
     }

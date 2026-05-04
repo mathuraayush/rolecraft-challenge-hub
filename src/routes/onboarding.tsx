@@ -45,6 +45,13 @@ function Onboarding() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
+    if (!user) return;
+    supabase.from("recruiters").select("id").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+      if (data) navigate({ to: "/portfolios" });
+    });
+  }, [user, navigate]);
+
+  useEffect(() => {
     supabase.from("roles").select("*").order("name").then(({ data }) => {
       if (data) setRoles(data);
     });

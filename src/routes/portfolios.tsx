@@ -139,6 +139,47 @@ function PortfoliosPage() {
   const subscribed = !!recruiter?.is_subscribed;
   const showFreeBanner = isRecruiter && !subscribed;
 
+  if (!user) {
+    return (
+      <AppShell>
+        <div className="text-center py-20">
+          <h1 className="font-display text-5xl font-semibold">Find Your Next Hire</h1>
+          <p className="mt-4 text-lg text-muted-foreground max-w-xl mx-auto">
+            Browse verified project portfolios from emerging talent across India. Hire on proof of work, not pedigree.
+          </p>
+          <div className="mt-8 flex gap-4 justify-center">
+            <Link to="/auth" search={{ type: "recruiter" } as any} className="rounded-xl bg-primary px-6 py-3 font-medium text-primary-foreground hover:opacity-90">
+              Sign in as Recruiter →
+            </Link>
+            <Link to="/pricing" className="rounded-xl border border-border bg-card px-6 py-3 font-medium hover:bg-muted">
+              View pricing
+            </Link>
+          </div>
+          <p className="mt-6 text-sm text-muted-foreground">Free to browse · No placement fees · Cancel anytime</p>
+          <div className="mt-12 grid gap-4 md:grid-cols-3 max-w-3xl mx-auto">
+            {[1,2,3].map((i) => (
+              <div key={i} className="rounded-2xl border border-border bg-card p-6 text-left blur-sm select-none">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-primary/10" />
+                  <div>
+                    <div className="font-display text-lg font-semibold">Candidate Name</div>
+                    <div className="text-xs text-muted-foreground">College · City</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-1.5 text-xs">
+                  <span className="rounded-full bg-muted px-2 py-0.5">Role</span>
+                  <span className="rounded-full bg-accent/20 px-2 py-0.5">Level</span>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">5 projects graded · score 87</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+
   return (
     <AppShell>
       <div>
