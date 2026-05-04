@@ -62,6 +62,7 @@ function Dashboard() {
 
   const refresh = useCallback(async () => {
     if (!user) return;
+    if (rLoading || isRecruiter) return; // don't run student logic for recruiters
     const [{ data: u }, { data: ps }, { data: subs }] = await Promise.all([
       supabase.from("users").select("name, role, level, onboarded").eq("id", user.id).maybeSingle(),
       supabase.from("projects").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
@@ -78,7 +79,7 @@ function Dashboard() {
       const { data: r } = await supabase.from("roles").select("name").eq("slug", u.role).maybeSingle();
       if (r) setRoleName(r.name);
     }
-  }, [user, navigate]);
+  }, [user, navigate, rLoading, isRecruiter]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
