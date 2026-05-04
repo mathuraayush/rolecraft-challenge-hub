@@ -264,12 +264,14 @@ function PortfoliosPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {filtered.map((p) => {
-                const a = aggBy.get(p.id)!;
-                const score = Math.round(a.avg);
+                const a = aggBy.get(p.id);
+                const score = a ? Math.round(a.avg) : 0;
+                const count = a?.count ?? 0;
+                const domains = a?.domains ?? [];
                 const role = roles.find((r) => r.slug === p.role);
                 const isContacted = contacted.has(p.id);
                 const sending = sendingId === p.id;
-                const scoreColor = score >= 80 ? "text-success" : score >= 60 ? "text-primary" : "text-accent-foreground";
+                const scoreColor = score >= 80 ? "text-success" : score >= 60 ? "text-primary" : "text-muted-foreground";
                 return (
                   <div key={p.id} className="rounded-2xl border border-border bg-card p-6">
                     <div className="flex items-start gap-3">
@@ -285,19 +287,21 @@ function PortfoliosPage() {
                           {p.college}{p.city ? ` · ${p.city}` : ""}
                         </div>
                       </div>
-                      <div className={`text-right font-display text-2xl font-semibold ${scoreColor}`}>{score}</div>
+                      <div className={`text-right font-display text-2xl font-semibold ${scoreColor}`}>
+                        {count > 0 ? score : "—"}
+                      </div>
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
                       {role && <span className="rounded-full bg-muted px-2 py-0.5">{role.icon_emoji} {role.name}</span>}
                       {p.level && <span className="rounded-full bg-accent/20 px-2 py-0.5 capitalize">{p.level}</span>}
-                      {a.domains.slice(0, 3).map((d) => (
+                      {domains.slice(0, 3).map((d) => (
                         <span key={d} className="rounded-full bg-secondary px-2 py-0.5">{d}</span>
                       ))}
                     </div>
 
                     <div className="mt-2 text-xs text-muted-foreground">
-                      {a.count} {a.count === 1 ? "project" : "projects"} graded
+                      {count === 0 ? "No graded projects yet" : `${count} ${count === 1 ? "project" : "projects"} graded`}
                     </div>
 
                     <div className="mt-4 flex gap-2">
