@@ -91,8 +91,9 @@ function PortfoliosPage() {
       });
       setAggBy(byUser);
 
+      // Show all onboarded users with public portfolios; submissions are optional.
       const rows = ((u as unknown as Person[]) || []).filter((p) =>
-        p.portfolios?.is_public !== false && byUser.has(p.id)
+        p.portfolios?.is_public !== false
       );
       setPeople(rows);
       setLoading(false);
@@ -102,17 +103,21 @@ function PortfoliosPage() {
   const filtered = useMemo(() => {
     let rows = people.filter((p) => {
       const a = aggBy.get(p.id);
-      if (!a) return false;
+      const score = a ? Math.round(a.avg) : 0;
+      const domains = a?.domains || [];
       if (selRoles.length && (!p.role || !selRoles.includes(p.role))) return false;
       if (selLevels.length && (!p.level || !selLevels.includes(p.level))) return false;
-      if (selDomains.length && !a.domains.some((d) => selDomains.includes(d))) return false;
-      if (Math.round(a.avg) < minScore) return false;
+      if (selDomains.length && !domains.some((d) => selDomains.includes(d))) return false;
+      if (score < minScore) return false;
       if (openOnly && !p.portfolios?.is_available_for_hire) return false;
       return true;
     });
-    if (sort === "score") rows.sort((a, b) => (aggBy.get(b.id)!.avg) - (aggBy.get(a.id)!.avg));
-    else if (sort === "recent") rows.sort((a, b) => aggBy.get(b.id)!.created_at.localeCompare(aggBy.get(a.id)!.created_at));
-    else rows.sort((a, b) => aggBy.get(b.id)!.count - aggBy.get(a.id)!.count);
+    const scoreOf = (id: string) => aggBy.get(id)?.avg ?? 0;
+    const countOf = (id: string) => aggBy.get(id)?.count ?? 0;
+    const recentOf = (id: string) => aggBy.get(id)?.created_at ?? "";
+    if (sort === "score") rows.sort((a, b) => scoreOf(b.id) - scoreOf(a.id));
+    else if (sort === "recent") rows.sort((a, b) => recentOf(b.id).localeCompare(recentOf(a.id)));
+    else rows.sort((a, b) => countOf(b.id) - countOf(a.id));
     return rows;
   }, [people, aggBy, selRoles, selLevels, selDomains, minScore, openOnly, sort]);
 
@@ -259,12 +264,14 @@ function PortfoliosPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {filtered.map((p) => {
-                const a = aggBy.get(p.id)!;
-                const score = Math.round(a.avg);
+                const a = aggBy.get(p.id);
+                const score = a ? Math.round(a.avg) : 0;
+                const count = a?.count ?? 0;
+                const domains = a?.domains ?? [];
                 const role = roles.find((r) => r.slug === p.role);
                 const isContacted = contacted.has(p.id);
                 const sending = sendingId === p.id;
-                const scoreColor = score >= 80 ? "text-success" : score >= 60 ? "text-primary" : "text-accent-foreground";
+                const scoreColor = score >= 80 ? "text-success" : score >= 60 ? "text-primary" : "text-muted-foreground";
                 return (
                   <div key={p.id} className="rounded-2xl border border-border bg-card p-6">
                     <div className="flex items-start gap-3">
@@ -280,19 +287,21 @@ function PortfoliosPage() {
                           {p.college}{p.city ? ` · ${p.city}` : ""}
                         </div>
                       </div>
-                      <div className={`text-right font-display text-2xl font-semibold ${scoreColor}`}>{score}</div>
+                      <div className={`text-right font-display text-2xl font-semibold ${scoreColor}`}>
+                        {count > 0 ? score : "—"}
+                      </div>
                     </div>
 
                     <div className="mt-3 flex flex-wrap gap-1.5 text-xs">
                       {role && <span className="rounded-full bg-muted px-2 py-0.5">{role.icon_emoji} {role.name}</span>}
                       {p.level && <span className="rounded-full bg-accent/20 px-2 py-0.5 capitalize">{p.level}</span>}
-                      {a.domains.slice(0, 3).map((d) => (
+                      {domains.slice(0, 3).map((d) => (
                         <span key={d} className="rounded-full bg-secondary px-2 py-0.5">{d}</span>
                       ))}
                     </div>
 
                     <div className="mt-2 text-xs text-muted-foreground">
-                      {a.count} {a.count === 1 ? "project" : "projects"} graded
+                      {count === 0 ? "No graded projects yet" : `${count} ${count === 1 ? "project" : "projects"} graded`}
                     </div>
 
                     <div className="mt-4 flex gap-2">
