@@ -113,7 +113,7 @@ export const sendRecruiterInterest = createServerFn({ method: "POST" })
 const subSchema = z.object({
   recruiter_id: z.string().uuid(),
   plan_type: z.enum(["monthly", "annual"]),
-  phone: z.string().min(4).max(40),
+  phone: z.string().trim().min(1).max(40),
   hiring_count: z.string().min(1).max(20),
 });
 
