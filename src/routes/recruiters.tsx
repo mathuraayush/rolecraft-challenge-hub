@@ -60,8 +60,8 @@ function RecruitersPage() {
         <div className="mx-auto max-w-xl rounded-3xl border border-border bg-card p-8 text-center">
           <h1 className="font-display text-3xl font-semibold">For recruiters</h1>
           <p className="mt-3 text-muted-foreground">Sign in to create your recruiter profile and save searches.</p>
-          <Link to="/auth" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:opacity-90">
-            Sign in
+          <Link to="/auth" search={{ type: "recruiter" } as any} className="mt-6 inline-flex rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground hover:opacity-90">
+            Sign up / Sign in
           </Link>
         </div>
       </AppShell>
