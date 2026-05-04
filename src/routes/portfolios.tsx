@@ -103,17 +103,21 @@ function PortfoliosPage() {
   const filtered = useMemo(() => {
     let rows = people.filter((p) => {
       const a = aggBy.get(p.id);
-      if (!a) return false;
+      const score = a ? Math.round(a.avg) : 0;
+      const domains = a?.domains || [];
       if (selRoles.length && (!p.role || !selRoles.includes(p.role))) return false;
       if (selLevels.length && (!p.level || !selLevels.includes(p.level))) return false;
-      if (selDomains.length && !a.domains.some((d) => selDomains.includes(d))) return false;
-      if (Math.round(a.avg) < minScore) return false;
+      if (selDomains.length && !domains.some((d) => selDomains.includes(d))) return false;
+      if (score < minScore) return false;
       if (openOnly && !p.portfolios?.is_available_for_hire) return false;
       return true;
     });
-    if (sort === "score") rows.sort((a, b) => (aggBy.get(b.id)!.avg) - (aggBy.get(a.id)!.avg));
-    else if (sort === "recent") rows.sort((a, b) => aggBy.get(b.id)!.created_at.localeCompare(aggBy.get(a.id)!.created_at));
-    else rows.sort((a, b) => aggBy.get(b.id)!.count - aggBy.get(a.id)!.count);
+    const scoreOf = (id: string) => aggBy.get(id)?.avg ?? 0;
+    const countOf = (id: string) => aggBy.get(id)?.count ?? 0;
+    const recentOf = (id: string) => aggBy.get(id)?.created_at ?? "";
+    if (sort === "score") rows.sort((a, b) => scoreOf(b.id) - scoreOf(a.id));
+    else if (sort === "recent") rows.sort((a, b) => recentOf(b.id).localeCompare(recentOf(a.id)));
+    else rows.sort((a, b) => countOf(b.id) - countOf(a.id));
     return rows;
   }, [people, aggBy, selRoles, selLevels, selDomains, minScore, openOnly, sort]);
 
