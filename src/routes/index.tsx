@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
+import { useRecruiter } from "@/lib/useRecruiter";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -7,6 +8,7 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const { user } = useAuth();
+  const { isRecruiter } = useRecruiter();
   return (
     <div className="min-h-screen bg-background">
       <header className="container-narrow flex items-center justify-between py-6">
@@ -55,13 +57,19 @@ function Landing() {
           >
             Get Started →
           </Link>
-          <Link
-            to="/portfolios"
-            className="inline-flex w-full items-center justify-center rounded-xl border border-border bg-card px-6 py-3 text-base font-medium text-foreground transition hover:bg-muted sm:w-auto"
-          >
-            Browse Portfolios
-          </Link>
+          {(!user || isRecruiter) && (
+            isRecruiter ? (
+              <Link to="/portfolios" className="inline-flex w-full items-center justify-center rounded-xl border border-border bg-card px-6 py-3 text-base font-medium text-foreground transition hover:bg-muted sm:w-auto">
+                Browse Portfolios
+              </Link>
+            ) : (
+              <Link to="/recruiters" className="inline-flex w-full items-center justify-center rounded-xl border border-border bg-card px-6 py-3 text-base font-medium text-foreground transition hover:bg-muted sm:w-auto">
+                I'm a Recruiter →
+              </Link>
+            )
+          )}
         </div>
+
 
         <div className="mt-24 grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
           {[
