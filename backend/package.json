@@ -1,0 +1,33 @@
+{
+  "name": "youtube-backend",
+  "version": "1.0.0",
+  "description": "Youtube Backend by Chai aur Code",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "seed": "node scripts/seedRoles.js"
+  },
+  "author": "Aayush Mathur",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.1.10",
+    "prettier": "^3.6.2"
+  },
+  "dependencies": {
+    "@google/genai": "^2.2.0",
+    "axios": "^1.16.1",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.7.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.16.1",
+    "mongoose-aggregate-paginate-v2": "^1.1.4",
+    "multer": "^2.0.2",
+    "resend": "^5.0.0"
+  }
+}
